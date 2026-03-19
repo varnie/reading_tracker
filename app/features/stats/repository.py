@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import BookStatus
 from app.models.user_book import UserBook
-from app.models.reading_session import ReadingSession
 
 
 class StatsRepository:

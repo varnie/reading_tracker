@@ -1,5 +1,5 @@
 import pytest
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from uuid import uuid4
 
 from app.core.security import (

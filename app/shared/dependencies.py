@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from uuid import UUID
 
-from fastapi import Depends, Header
+from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 

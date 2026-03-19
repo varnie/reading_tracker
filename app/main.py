@@ -4,7 +4,6 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.openapi.models import SecuritySchemeType, OAuthFlows as OAuthFlowsModel
 
 from app.core.config import settings
 from app.core.logging import setup_logging

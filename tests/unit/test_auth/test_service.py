@@ -1,10 +1,9 @@
 import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from app.features.auth.service import AuthService
-from app.core.security import hash_password
 
 
 class TestAuthService:

@@ -13,7 +13,6 @@ from app.features.auth.schemas import (
     TokenResponse,
     RefreshTokenResponse,
     LogoutResponse,
-    MessageResponse,
 )
 from app.features.auth.service import AuthService
 

@@ -33,7 +33,6 @@ async def fake_redis():
 async def test_engine():
     """Create test database engine with SQLite."""
     from app.shared.models import Base
-    from app.models import User, Book, UserBook, RefreshToken, ReadingSession
 
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",

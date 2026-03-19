@@ -4,7 +4,6 @@ from sqlalchemy import select, delete
 
 from app.core.enums import BookStatus
 from app.core.logging import get_logger
-from app.models.book import Book
 from app.models.reading_session import ReadingSession
 from app.models.user import User
 from app.models.user_book import UserBook

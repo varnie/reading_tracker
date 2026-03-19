@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -44,7 +43,6 @@ class TestAuthServiceEvents:
     async def test_register_emits_user_registered_event(self):
         """register() should emit user_registered event."""
         from app.features.auth.service import AuthService
-        from app.features.auth.events import AuthEvents
 
         mock_session = AsyncMock()
 

@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from app.features.auth.repository import UserRepository, RefreshTokenRepository
-from app.core.security import hash_password
 
 
 class TestUserRepository:
