@@ -25,6 +25,8 @@ from app.features.auth.schemas import (
     RefreshTokenResponse,
     UserResponse,
 )
+from app.features.auth.events import AuthEvents
+from app.shared.events import event_bus
 
 
 class AuthService:
@@ -55,6 +57,8 @@ class AuthService:
         password_hash = hash_password(password)
         user = await self._user_repo.create(email, password_hash)
 
+        await event_bus.publish(AuthEvents.user_registered(str(user.id), user.email))
+
         return UserResponse(
             id=user.id,
             email=user.email,
@@ -79,6 +83,8 @@ class AuthService:
 
         if not user or not verify_password(password, user.password_hash):
             raise InvalidCredentialsError()
+
+        await event_bus.publish(AuthEvents.user_logged_in(str(user.id)))
 
         return await self._create_tokens(user.id)
 
@@ -141,6 +147,7 @@ class AuthService:
             pass
 
         await self._token_repo.revoke_all_for_user(user_id)
+        await event_bus.publish(AuthEvents.user_logged_out(str(user_id)))
 
     async def _create_tokens(self, user_id: UUID) -> TokenResponse:
         """Create access and refresh tokens for a user."""
