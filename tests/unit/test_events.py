@@ -3,8 +3,6 @@ from datetime import datetime
 
 from app.shared.events import Event, EventBus
 
-pytestmark = pytest.mark.asyncio
-
 
 class TestEvent:
     """Tests for Event class."""
@@ -39,7 +37,6 @@ class TestEventBus:
         """Create fresh EventBus instance."""
         return EventBus()
 
-    @pytest.mark.asyncio
     async def test_subscribe_and_publish(self, event_bus):
         """Handler should be called when event is published."""
         called = []
@@ -55,7 +52,6 @@ class TestEventBus:
         assert len(called) == 1
         assert called[0].data["test"] is True
 
-    @pytest.mark.asyncio
     async def test_unsubscribe(self, event_bus):
         """Handler should stop receiving events after unsubscribe."""
         called = []
@@ -71,13 +67,11 @@ class TestEventBus:
 
         assert len(called) == 0
 
-    @pytest.mark.asyncio
     async def test_no_handlers(self, event_bus):
         """Publishing to event with no handlers should not raise."""
         event = Event(name="no.handlers", data={})
         await event_bus.publish(event)  # Should not raise
 
-    @pytest.mark.asyncio
     async def test_multiple_handlers(self, event_bus):
         """Multiple handlers should all be called."""
         results = []
