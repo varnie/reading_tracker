@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User, RefreshToken
+from app.models.user import RefreshToken, User
 
 
 class UserRepository:

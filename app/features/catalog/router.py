@@ -1,18 +1,16 @@
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.dependencies import get_db, get_current_user
-from app.models.user import User
+from app.features.catalog.events import CatalogEvents
 from app.features.catalog.schemas import (
     CatalogBookCreate,
-    CatalogBookResponse,
     CatalogBookListResponse,
+    CatalogBookResponse,
 )
 from app.features.catalog.service import CatalogService
-from app.features.catalog.events import CatalogEvents
+from app.models.user import User
+from app.shared.dependencies import get_current_user, get_db
 from app.shared.events import event_bus
-
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 

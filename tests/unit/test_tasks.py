@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.tasks.book_tasks import (
     check_abandoned_books,
@@ -67,7 +68,7 @@ class TestCleanupOldSessions:
             "app.tasks.book_tasks.get_sync_session",
             return_value=mock_session_cm(mock_session),
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception, match="DB error"):
                 cleanup_old_sessions()
 
             mock_session.rollback.assert_called_once()
@@ -83,13 +84,13 @@ class TestCheckAbandonedBooks:
         book = MagicMock()
         book.id = "book-1"
         book.status = "reading"
-        book.started_at = datetime.now(timezone.utc) - timedelta(days=60)
+        book.started_at = datetime.now(UTC) - timedelta(days=60)
 
         reading_books_result = MagicMock()
         reading_books_result.scalars.return_value.all.return_value = [book]
 
         last_session = MagicMock()
-        last_session.started_at = datetime.now(timezone.utc) - timedelta(days=35)
+        last_session.started_at = datetime.now(UTC) - timedelta(days=35)
 
         last_session_result = MagicMock()
         last_session_result.scalar_one_or_none.return_value = last_session
@@ -111,13 +112,13 @@ class TestCheckAbandonedBooks:
 
         book = MagicMock()
         book.status = "reading"
-        book.started_at = datetime.now(timezone.utc) - timedelta(days=1)
+        book.started_at = datetime.now(UTC) - timedelta(days=1)
 
         reading_books_result = MagicMock()
         reading_books_result.scalars.return_value.all.return_value = [book]
 
         last_session = MagicMock()
-        last_session.started_at = datetime.now(timezone.utc) - timedelta(days=1)
+        last_session.started_at = datetime.now(UTC) - timedelta(days=1)
 
         last_session_result = MagicMock()
         last_session_result.scalar_one_or_none.return_value = last_session
@@ -142,7 +143,7 @@ class TestGenerateWeeklyReport:
 
         user_book = MagicMock()
         user_book.id = "ub-1"
-        user_book.started_at = datetime.now(timezone.utc) - timedelta(days=3)
+        user_book.started_at = datetime.now(UTC) - timedelta(days=3)
         user_book.finished_at = None
 
         user_books_result = MagicMock()

@@ -3,7 +3,6 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-
 class CatalogBookCreate(BaseModel):
     """Schema for creating a book in catalog."""
 

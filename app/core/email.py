@@ -87,7 +87,7 @@ class EmailService:
         Returns:
             True if sent successfully
         """
-        subject = f"Your Weekly Reading Report"
+        subject = "Your Weekly Reading Report"
         html_body = self._weekly_report_html(user_name, stats)
         text_body = self._weekly_report_text(user_name, stats)
 

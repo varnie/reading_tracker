@@ -1,7 +1,8 @@
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from datetime import datetime, timezone
+
+import pytest
 
 
 class TestCatalogService:
@@ -40,7 +41,7 @@ class TestCatalogService:
         book.isbn = "1234567890"
         book.description = "A test book"
         book.pages_total = 200
-        book.created_at = datetime.now(timezone.utc)
+        book.created_at = datetime.now(UTC)
         book.created_by_user_id = user_id
         mock_repo.isbn_exists.return_value = False
         mock_repo.create.return_value = book
@@ -89,7 +90,7 @@ class TestCatalogService:
         book1.isbn = "111"
         book1.description = "Desc 1"
         book1.pages_total = 100
-        book1.created_at = datetime.now(timezone.utc)
+        book1.created_at = datetime.now(UTC)
         book1.created_by_user_id = uuid4()
 
         mock_repo.search.return_value = ([book1], 1)
@@ -109,7 +110,7 @@ class TestCatalogService:
         book.isbn = "999"
         book.description = "A popular book"
         book.pages_total = 300
-        book.created_at = datetime.now(timezone.utc)
+        book.created_at = datetime.now(UTC)
         book.created_by_user_id = uuid4()
 
         mock_repo.get_popular.return_value = [book]

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import ClassVar
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -9,7 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 class Base(DeclarativeBase):
     """Base class for all database models."""
 
-    type_annotation_map = {
+    type_annotation_map: ClassVar[dict] = {
         uuid.UUID: UUID(as_uuid=True),
     }
 

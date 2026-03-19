@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from app.core.redis import TokenBlacklist, Cache
+import pytest
+
+from app.core.redis import Cache, TokenBlacklist
 
 
 class TestTokenBlacklist:
@@ -10,8 +11,7 @@ class TestTokenBlacklist:
     @pytest.fixture
     def mock_redis(self):
         """Create mock Redis client."""
-        mock = AsyncMock()
-        return mock
+        return AsyncMock()
 
     @pytest.fixture
     def blacklist(self, mock_redis):

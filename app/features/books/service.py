@@ -1,15 +1,15 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import BookStatus
-from app.core.exceptions import NotFoundError, ConflictError
-from app.features.books.repository import BookRepository
-from app.features.books.schemas import BookCreate, BookUpdate, BookResponse
+from app.core.exceptions import ConflictError, NotFoundError
 from app.features.books.events import BookEvents
-from app.shared.events import event_bus
+from app.features.books.repository import BookRepository
+from app.features.books.schemas import BookCreate, BookResponse, BookUpdate
 from app.features.catalog.repository import CatalogRepository
+from app.shared.events import event_bus
 
 
 class BookService:
@@ -84,10 +84,10 @@ class BookService:
         update_data = data.model_dump(exclude_unset=True)
 
         if data.status == BookStatus.READING and not user_book.started_at:
-            update_data["started_at"] = datetime.now(timezone.utc)
+            update_data["started_at"] = datetime.now(UTC)
 
         if data.status == BookStatus.FINISHED:
-            update_data["finished_at"] = datetime.now(timezone.utc)
+            update_data["finished_at"] = datetime.now(UTC)
             update_data["rating"] = data.rating
             await event_bus.publish(
                 BookEvents.book_finished(str(user_id), str(user_book.id))
@@ -106,6 +106,7 @@ class BookService:
     async def _to_response(self, user_book) -> BookResponse:
         """Convert UserBook model to response."""
         from sqlalchemy import select
+
         from app.models.book import Book
 
         result = await self._session.execute(

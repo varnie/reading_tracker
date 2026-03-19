@@ -4,19 +4,18 @@ from typing import Any
 from unittest.mock import patch
 from uuid import UUID
 
+import fakeredis.aioredis
 import pytest
 import pytest_asyncio
-import fakeredis.aioredis
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
-
 
 FIXED_UUID = UUID("12345678-1234-5678-1234-567812345678")
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+def event_loop() -> Generator[asyncio.AbstractEventLoop]:
     """Create event loop for the test session."""
     loop = asyncio.new_event_loop()
     yield loop
@@ -59,7 +58,7 @@ async def test_session_maker(test_engine):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient, None]:
+async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
     """Create a test client with fake Redis and SQLite."""
     import app.features.stats.service as stats_service_module
 

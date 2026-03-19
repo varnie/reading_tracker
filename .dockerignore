@@ -6,8 +6,6 @@
 !README.md
 Dockerfile*
 docker-compose*.yml
-ruff.toml
-pyproject.toml
 tests/
 docs/
 *.log

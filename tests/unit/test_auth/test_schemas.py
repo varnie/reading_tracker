@@ -2,9 +2,9 @@ import pytest
 from pydantic import ValidationError
 
 from app.features.auth.schemas import (
+    TokenResponse,
     UserCreate,
     UserLogin,
-    TokenResponse,
 )
 
 

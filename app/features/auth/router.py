@@ -1,21 +1,20 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, Cookie
+from fastapi import APIRouter, Cookie, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import UnauthorizedError
-from app.shared.dependencies import get_db
 from app.features.auth.schemas import (
+    LogoutResponse,
+    RefreshTokenResponse,
+    TokenResponse,
     UserCreate,
     UserLogin,
     UserResponse,
-    TokenResponse,
-    RefreshTokenResponse,
-    LogoutResponse,
 )
 from app.features.auth.service import AuthService
-
+from app.shared.dependencies import get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

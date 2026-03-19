@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 
-
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
@@ -43,7 +42,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 @asynccontextmanager
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_db_session() -> AsyncGenerator[AsyncSession]:
     """Get database session as async context manager."""
     session_factory = get_session_factory()
     async with session_factory() as session:
@@ -59,10 +58,10 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Initialize database tables."""
-    from app.models.user import User  # noqa: F401
     from app.models.book import Book  # noqa: F401
-    from app.models.user_book import UserBook  # noqa: F401
     from app.models.reading_session import ReadingSession  # noqa: F401
+    from app.models.user import User  # noqa: F401
+    from app.models.user_book import UserBook  # noqa: F401
     from app.shared.models import Base
 
     engine = get_engine()

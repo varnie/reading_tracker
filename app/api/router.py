@@ -2,10 +2,9 @@ from fastapi import APIRouter
 
 from app.features.auth.router import router as auth_router
 from app.features.books.router import router as books_router
-from app.features.sessions.router import router as sessions_router
 from app.features.catalog.router import router as catalog_router
+from app.features.sessions.router import router as sessions_router
 from app.features.stats.router import router as stats_router
-
 
 api_router = APIRouter()
 

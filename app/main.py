@@ -1,15 +1,15 @@
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.logging import setup_logging
 from app.core.exceptions import AppException
-from app.db.session import init_db, close_db
+from app.core.logging import setup_logging
 from app.core.redis import close_redis
+from app.db.session import close_db, init_db
 from app.shared.schemas import HealthResponse
 
 
@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["*"],
@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
         return HealthResponse(
             status="healthy",
             version="0.1.0",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
     from app.api.router import api_router

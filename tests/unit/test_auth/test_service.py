@@ -1,7 +1,8 @@
-import pytest
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from app.features.auth.service import AuthService
 
@@ -21,8 +22,8 @@ class TestAuthService:
 
         async def mock_refresh(obj, **kwargs):
             obj.id = uuid4()
-            obj.created_at = datetime.utcnow()
-            obj.updated_at = datetime.utcnow()
+            obj.created_at = datetime.now(UTC)
+            obj.updated_at = datetime.now(UTC)
 
         session.refresh = mock_refresh
         return session
@@ -36,7 +37,7 @@ class TestAuthService:
 
         service = AuthService(mock_session)
 
-        user = await service.register("test@example.com", "Password123!")
+        await service.register("test@example.com", "Password123!")
 
         mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()

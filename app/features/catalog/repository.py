@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import not_
 
 from app.models.book import Book
 
@@ -38,7 +39,7 @@ class CatalogRepository:
     async def get_by_id(self, book_id: UUID) -> Book | None:
         """Get catalog book by ID."""
         result = await self._session.execute(
-            select(Book).where(Book.id == book_id, Book.is_deleted == False)
+            select(Book).where(Book.id == book_id, not_(Book.is_deleted))
         )
         return result.scalar_one_or_none()
 
@@ -50,8 +51,8 @@ class CatalogRepository:
         per_page: int = 20,
     ) -> tuple[list[Book], int]:
         """Search catalog books."""
-        base_query = select(Book).where(Book.is_deleted == False)
-        count_query = select(func.count(Book.id)).where(Book.is_deleted == False)
+        base_query = select(Book).where(not_(Book.is_deleted))
+        count_query = select(func.count(Book.id)).where(not_(Book.is_deleted))
 
         if query:
             search_filter = Book.title.ilike(f"%{query}%")
@@ -79,12 +80,13 @@ class CatalogRepository:
     ) -> list[Book]:
         """Get popular books (most added by users)."""
         from sqlalchemy import desc
+
         from app.models.user_book import UserBook
 
         result = await self._session.execute(
             select(Book)
             .join(UserBook, Book.id == UserBook.book_id)
-            .where(Book.is_deleted == False)
+            .where(not_(Book.is_deleted))
             .group_by(Book.id)
             .order_by(desc(func.count(UserBook.id)))
             .limit(limit)
@@ -94,6 +96,6 @@ class CatalogRepository:
     async def isbn_exists(self, isbn: str) -> bool:
         """Check if ISBN already exists."""
         result = await self._session.execute(
-            select(Book.id).where(Book.isbn == isbn, Book.is_deleted == False)
+            select(Book.id).where(Book.isbn == isbn, not_(Book.is_deleted))
         )
         return result.scalar_one_or_none() is not None

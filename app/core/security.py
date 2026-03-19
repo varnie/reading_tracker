@@ -5,10 +5,9 @@ from uuid import UUID
 
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHash
+from argon2.exceptions import InvalidHash, VerifyMismatchError
 
 from app.core.config import settings
-
 
 argon2_hasher = PasswordHasher(
     memory_cost=settings.argon2_memory_cost,

@@ -1,13 +1,13 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
 from app.core.email import email_service
+from app.models.reading_session import ReadingSession
 from app.models.user import User
 from app.models.user_book import UserBook
-from app.models.reading_session import ReadingSession
 from app.tasks.celery_app import celery_app
 from app.tasks.celery_db import get_sync_session
 
@@ -28,7 +28,7 @@ def generate_weekly_report(user_id: str) -> dict:
     logger.info(f"Generating weekly report for user {user_id}")
 
     with get_sync_session() as session:
-        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        week_ago = datetime.now(UTC) - timedelta(days=7)
 
         user = session.get(User, user_id)
         if not user:
@@ -126,11 +126,11 @@ def send_reminder(user_id: str, book_id: str) -> dict:
         ).scalar_one_or_none()
 
         if last_session:
-            days_since = (datetime.now(timezone.utc) - last_session.started_at).days
+            days_since = (datetime.now(UTC) - last_session.started_at).days
             message = f"You haven't read in {days_since} days"
         else:
             days_since = (
-                (datetime.now(timezone.utc) - user_book.started_at).days
+                (datetime.now(UTC) - user_book.started_at).days
                 if user_book.started_at
                 else 0
             )

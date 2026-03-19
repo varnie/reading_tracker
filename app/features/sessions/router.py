@@ -1,16 +1,16 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.dependencies import get_db, get_current_user
-from app.models.user import User
 from app.features.sessions.schemas import (
     SessionCreate,
-    SessionResponse,
     SessionListResponse,
+    SessionResponse,
 )
 from app.features.sessions.service import SessionService
-from uuid import UUID
-
+from app.models.user import User
+from app.shared.dependencies import get_current_user, get_db
 
 router = APIRouter(tags=["sessions"])
 

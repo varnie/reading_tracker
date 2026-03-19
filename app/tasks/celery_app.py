@@ -2,7 +2,6 @@ from celery import Celery
 
 from app.core.config import settings
 
-
 celery_app = Celery(
     "reading_tracker",
     broker=settings.celery_broker_url,

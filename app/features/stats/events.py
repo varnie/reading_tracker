@@ -64,6 +64,7 @@ class StatsEvents:
     async def on_user_registered(event: Event) -> None:
         """Handler: track new user registration for weekly reports."""
         import logging
+
         from app.core.redis import Cache, get_redis
 
         logger = logging.getLogger(__name__)
@@ -83,6 +84,7 @@ class StatsEvents:
     async def on_user_logged_in(event: Event) -> None:
         """Handler: track user login for activity reports."""
         import logging
+
         from app.core.redis import Cache, get_redis
 
         logger = logging.getLogger(__name__)

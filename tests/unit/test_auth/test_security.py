@@ -1,14 +1,15 @@
-import pytest
 from datetime import timedelta
 from uuid import uuid4
 
+import pytest
+
 from app.core.security import (
-    hash_password,
-    verify_password,
     create_access_token,
-    decode_token,
     create_refresh_token,
+    decode_token,
+    hash_password,
     hash_token,
+    verify_password,
 )
 
 
@@ -64,7 +65,7 @@ class TestJWTTokens:
         """Access token with custom expiry."""
         user_id = str(uuid4())
         expires = timedelta(minutes=60)
-        token, jti = create_access_token(user_id, expires_delta=expires)
+        token, _ = create_access_token(user_id, expires_delta=expires)
         assert isinstance(token, str)
 
     def test_decode_token_returns_dict(self):
@@ -80,7 +81,9 @@ class TestJWTTokens:
 
     def test_decode_token_invalid(self):
         """Decode should raise for invalid token."""
-        with pytest.raises(Exception):
+        import jwt
+
+        with pytest.raises(jwt.exceptions.DecodeError):
             decode_token("invalid.token.here")
 
 

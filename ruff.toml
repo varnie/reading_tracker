@@ -25,6 +25,9 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "ISC001", # may cause conflicts with formatter
+    "B008",   # FastAPI Depends is standard pattern
+    "F821",   # SQLAlchemy forward references are quoted strings
+    "UP046",  # Generic type annotation is fine
 ]
 
 [lint.isort]

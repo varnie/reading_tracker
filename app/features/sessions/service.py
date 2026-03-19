@@ -3,10 +3,10 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.features.books.events import BookEvents
+from app.features.books.repository import BookRepository
 from app.features.sessions.repository import SessionRepository
 from app.features.sessions.schemas import SessionCreate, SessionResponse
-from app.features.books.repository import BookRepository
-from app.features.books.events import BookEvents
 from app.shared.events import event_bus
 
 

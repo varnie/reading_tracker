@@ -11,6 +11,7 @@ REST API for tracking reading progress with books, sessions, and statistics.
 - **Celery Tasks**: Weekly reports, abandoned books detection, leaderboard updates
 - **Event-Driven Architecture**: Features communicate via Event Bus
 - **Repository Pattern**: Clean data access layer
+- **Event-Driven Analytics**: User registration/login tracking
 - **Email Notifications**: Weekly reports, reading reminders (optional)
 
 ## Tech Stack
@@ -37,8 +38,8 @@ API runs locally via uv, infrastructure in Docker.
 # 1. Clone and enter directory
 cd reading_tracker
 
-# 2. Copy environment config (localhost is pre-configured for local development)
-cp .env.example .env
+# 2. Copy environment config (optional - defaults work for local dev)
+# cp .env.example .env
 
 # 3. Start infrastructure
 docker compose up -d postgres redis
@@ -70,26 +71,43 @@ uv run ruff format
 Everything runs in Docker Compose.
 
 ```bash
-# 1. Copy environment config
-cp .env.example .env
-
-# 2. Start API only
+# 1. Start API only (uses .env.docker for Docker service names)
 docker compose up -d api
 
-# 3. Start API + Celery (worker + beat)
+# 2. Start API + Celery (worker + beat)
 docker compose --profile celery up -d
 
-# 4. View logs
+# 3. View logs
 docker compose logs -f api
 docker compose logs -f worker
 docker compose logs -f beat
 
-# 5. Run tests
+# 4. Run tests
 docker compose exec api python -m pytest
 
 # 5. Linting
 docker compose exec api ruff check .
 ```
+
+### Option 3: Production Docker
+
+Runs production containers with separate project name and ports to avoid conflicts with dev.
+
+```bash
+# Start production stack
+docker compose -f docker-compose.prod.yml -p reading_tracker_prod --env-file .env.prod up -d
+
+# View logs
+docker compose -p reading_tracker_prod logs -f api
+docker compose -p reading_tracker_prod logs -f worker
+
+# Stop production stack
+docker compose -p reading_tracker_prod down -v
+```
+
+> **Note:** The `--env-file .env.prod` flag is required to provide secrets (JWT_SECRET_KEY, passwords).
+>
+> **Ports:** API (8001), PostgreSQL (5433), Redis (6380) - different from dev to allow running both simultaneously.
 
 ## Environment Variables
 
@@ -108,6 +126,10 @@ docker compose exec api ruff check .
 | `SMTP_USER` | SMTP username | (empty) |
 | `SMTP_PASSWORD` | SMTP password | (empty) |
 | `SMTP_FROM_EMAIL` | From email address | noreply@readingtracker.app |
+
+**Environment files:**
+- `.env` - Local development (uses `localhost` for services)
+- `.env.docker` - Docker Compose (uses `postgres`, `redis` service names)
 
 ## API Endpoints
 
@@ -191,8 +213,11 @@ uv run pytest -q
 # Stop infrastructure only (hybrid)
 docker compose stop postgres redis
 
-# Stop everything (full docker)
+# Stop dev Docker setup
 docker compose down -v
+
+# Stop production Docker setup
+docker compose -p reading_tracker_prod down -v
 ```
 
 ## API Documentation

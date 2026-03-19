@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.dependencies import get_db, get_current_user
-from app.models.user import User
-from app.features.stats.schemas import UserStatsResponse, TopUsersResponse
+from app.features.stats.schemas import TopUsersResponse, UserStatsResponse
 from app.features.stats.service import StatsService
-
+from app.models.user import User
+from app.shared.dependencies import get_current_user, get_db
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 

@@ -36,21 +36,13 @@ services:
     container_name: reading_tracker_api
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/reading_tracker
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
-      APP_ENV: development
-      APP_VERSION: v1
-      LOG_LEVEL: INFO
+    env_file:
+      - .env.docker
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - .:/app
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -62,14 +54,8 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     container_name: reading_tracker_worker
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/reading_tracker
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
-      APP_ENV: development
-      APP_VERSION: v1
-      LOG_LEVEL: INFO
+    env_file:
+      - .env.docker
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,14 +72,8 @@ services:
       dockerfile: Dockerfile.worker
     container_name: reading_tracker_beat
     command: ["uv", "run", "celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/reading_tracker
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
-      APP_ENV: development
-      APP_VERSION: v1
-      LOG_LEVEL: INFO
+    env_file:
+      - .env.docker
     depends_on:
       postgres:
         condition: service_healthy

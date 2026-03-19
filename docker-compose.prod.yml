@@ -1,13 +1,13 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: reading_tracker_postgres
+    container_name: reading_tracker_prod_postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-reading_tracker}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,10 +29,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: reading_tracker_redis
+    container_name: reading_tracker_prod_redis
     command: redis-server --requirepass ${REDIS_PASSWORD}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -57,9 +57,9 @@ services:
       context: .
       dockerfile: Dockerfile.prod
     image: reading-tracker-api:latest
-    container_name: reading_tracker_api
+    container_name: reading_tracker_prod_api
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${API_PORT:-8001}:8000"
     environment:
       APP_ENV: production
       APP_VERSION: ${APP_VERSION:-v1}
@@ -72,6 +72,15 @@ services:
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-100}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@readingtracker.app}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Reading Tracker}
+      SMTP_TLS: ${SMTP_TLS:-true}
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,7 +109,7 @@ services:
       context: .
       dockerfile: Dockerfile.prod
     image: reading-tracker-worker:latest
-    container_name: reading_tracker_worker
+    container_name: reading_tracker_prod_worker
     environment:
       APP_ENV: production
       APP_VERSION: ${APP_VERSION:-v1}
@@ -109,6 +118,14 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@readingtracker.app}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Reading Tracker}
+      SMTP_TLS: ${SMTP_TLS:-true}
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,8 +148,8 @@ services:
       context: .
       dockerfile: Dockerfile.prod
     image: reading-tracker-worker:latest
-    container_name: reading_tracker_beat
-    command: ["uv", "run", "celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+    container_name: reading_tracker_prod_beat
+    command: [".venv/bin/celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
     environment:
       APP_ENV: production
       APP_VERSION: ${APP_VERSION:-v1}
@@ -141,6 +158,14 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@readingtracker.app}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Reading Tracker}
+      SMTP_TLS: ${SMTP_TLS:-true}
     depends_on:
       postgres:
         condition: service_healthy

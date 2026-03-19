@@ -1,15 +1,15 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
+from app.core.enums import BookStatus
+from app.core.logging import get_logger
+from app.models.reading_session import ReadingSession
 from app.models.user import User
 from app.models.user_book import UserBook
-from app.models.reading_session import ReadingSession
 from app.tasks.celery_app import celery_app
-from app.tasks.celery_db import get_sync_session, get_sync_redis
-from app.core.logging import get_logger
-from app.core.enums import BookStatus
+from app.tasks.celery_db import get_sync_redis, get_sync_session
 
 logger = get_logger(__name__)
 
@@ -61,7 +61,7 @@ def calculate_user_streaks() -> dict:
 
             current_streak = 0
             longest_streak = 0
-            today = datetime.now(timezone.utc).date()
+            today = datetime.now(UTC).date()
             check_date = today
 
             while check_date in session_dates:
@@ -112,9 +112,9 @@ def update_leaderboard(period: str = "month", limit: int = 10) -> dict:
 
     with get_sync_session() as session:
         if period == "week":
-            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+            cutoff = datetime.now(UTC) - timedelta(days=7)
         elif period == "month":
-            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+            cutoff = datetime.now(UTC) - timedelta(days=30)
         else:
             cutoff = None
 

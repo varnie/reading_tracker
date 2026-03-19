@@ -1,6 +1,7 @@
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 from app.core.logging import get_logger
 

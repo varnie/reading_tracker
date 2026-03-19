@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.redis import Cache, get_redis
 from app.features.stats.repository import StatsRepository
 from app.features.stats.schemas import (
-    UserStatsResponse,
-    TopUsersResponse,
     TopUserEntry,
+    TopUsersResponse,
+    UserStatsResponse,
 )
 
 

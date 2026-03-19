@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from app.features.stats.schemas import UserStatsResponse, TopUsersResponse, TopUserEntry
+import pytest
+
 from app.features.stats.repository import StatsRepository
+from app.features.stats.schemas import TopUserEntry, TopUsersResponse, UserStatsResponse
 
 
 class TestUserStatsResponse:

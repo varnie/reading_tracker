@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from app.features.auth.repository import UserRepository, RefreshTokenRepository
+import pytest
+
+from app.features.auth.repository import RefreshTokenRepository, UserRepository
 
 
 class TestUserRepository:

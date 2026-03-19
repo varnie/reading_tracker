@@ -1,5 +1,5 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -63,8 +63,8 @@ class Settings(BaseSettings):
     )
 
     # CORS
-    cors_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8080"],
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8080",
         validation_alias="CORS_ORIGINS",
     )
 

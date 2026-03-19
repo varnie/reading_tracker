@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 
 from app.core.enums import BookStatus
 from app.core.logging import get_logger
@@ -27,7 +27,7 @@ def cleanup_old_sessions(days_old: int = 365) -> dict:
     logger.info(f"Running cleanup_old_sessions task (days_old={days_old})")
 
     with get_sync_session() as session:
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days_old)
 
         result = session.execute(
             delete(ReadingSession).where(ReadingSession.started_at < cutoff_date)
@@ -52,7 +52,7 @@ def check_abandoned_books(days_inactive: int = 30) -> dict:
     logger.info(f"Running check_abandoned_books task (days_inactive={days_inactive})")
 
     with get_sync_session() as session:
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_inactive)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days_inactive)
 
         result = session.execute(
             select(UserBook).where(UserBook.status == BookStatus.READING)
@@ -100,7 +100,7 @@ def generate_weekly_report(user_id: str) -> dict:
     logger.info(f"Generating weekly report for user {user_id}")
 
     with get_sync_session() as session:
-        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        week_ago = datetime.now(UTC) - timedelta(days=7)
 
         user_books = (
             session.execute(select(UserBook).where(UserBook.user_id == user_id))
@@ -139,7 +139,7 @@ def generate_weekly_report(user_id: str) -> dict:
             "pages_read": pages_read,
             "sessions": sessions_count,
             "period_start": week_ago.isoformat(),
-            "period_end": datetime.now(timezone.utc).isoformat(),
+            "period_end": datetime.now(UTC).isoformat(),
         }
 
         logger.info(f"Generated report for user {user_id}: {report}")

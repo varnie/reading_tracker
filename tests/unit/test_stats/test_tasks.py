@@ -1,5 +1,6 @@
-from unittest.mock import patch, MagicMock
 from contextlib import contextmanager
+from datetime import UTC
+from unittest.mock import MagicMock, patch
 
 from app.tasks.stats_tasks import (
     calculate_user_streaks,
@@ -18,7 +19,7 @@ class TestCalculateUserStreaks:
 
     def test_calculate_user_streaks(self):
         """Task should calculate and cache user streaks."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         with (
             patch("app.tasks.stats_tasks.get_sync_session") as mock_get_session,
@@ -42,9 +43,9 @@ class TestCalculateUserStreaks:
             user_books_result.scalars.return_value.all.return_value = [user_book]
 
             session1 = MagicMock()
-            session1.started_at = datetime.now(timezone.utc) - timedelta(days=1)
+            session1.started_at = datetime.now(UTC) - timedelta(days=1)
             session2 = MagicMock()
-            session2.started_at = datetime.now(timezone.utc) - timedelta(days=2)
+            session2.started_at = datetime.now(UTC) - timedelta(days=2)
 
             sessions_result = MagicMock()
             sessions_result.scalars.return_value.all.return_value = [session1, session2]
