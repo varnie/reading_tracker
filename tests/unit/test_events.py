@@ -3,6 +3,8 @@ from datetime import datetime
 
 from app.shared.events import Event, EventBus
 
+pytestmark = pytest.mark.asyncio
+
 
 class TestEvent:
     """Tests for Event class."""
@@ -110,3 +112,21 @@ class TestEventBus:
 
         handlers = event_bus.get_subscribers("get.test")
         assert len(handlers) == 2
+
+
+class TestStatsAuthEventHandlers:
+    """Tests for auth event handlers in StatsEvents."""
+
+    def test_on_user_registered_is_callable(self):
+        """on_user_registered handler should exist and be callable."""
+        from app.features.stats.events import StatsEvents
+
+        assert hasattr(StatsEvents, "on_user_registered")
+        assert callable(StatsEvents.on_user_registered)
+
+    def test_on_user_logged_in_is_callable(self):
+        """on_user_logged_in handler should exist and be callable."""
+        from app.features.stats.events import StatsEvents
+
+        assert hasattr(StatsEvents, "on_user_logged_in")
+        assert callable(StatsEvents.on_user_logged_in)
