@@ -1,11 +1,11 @@
 import pytest
 from httpx import AsyncClient
 
-pytestmark = pytest.mark.asyncio
-
 
 class TestEmailIntegration:
     """Integration tests for email functionality."""
+
+    pytestmark = pytest.mark.asyncio
 
     async def test_email_service_initialized(self):
         """Email service should be initialized."""
@@ -72,6 +72,8 @@ class TestEmailCeleryTasksIntegration:
 
 class TestEmailServiceIntegration:
     """Integration tests for EmailService."""
+
+    pytestmark = pytest.mark.asyncio
 
     async def test_send_weekly_report_generates_correct_subject(self):
         """Weekly report email should have correct subject."""
