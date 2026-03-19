@@ -3,11 +3,17 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHash
-from jose import JWTError, jwt
 
 from app.core.config import settings
+
+
+class JWTError(Exception):
+    """JWT error for compatibility."""
+
+    pass
 
 
 argon2_hasher = PasswordHasher(
