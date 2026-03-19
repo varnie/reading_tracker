@@ -10,12 +10,6 @@ from argon2.exceptions import VerifyMismatchError, InvalidHash
 from app.core.config import settings
 
 
-class JWTError(Exception):
-    """JWT error for compatibility."""
-
-    pass
-
-
 argon2_hasher = PasswordHasher(
     memory_cost=settings.argon2_memory_cost,
     time_cost=settings.argon2_time_cost,
