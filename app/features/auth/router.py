@@ -1,0 +1,123 @@
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Response, Cookie
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.shared.dependencies import get_db
+from app.features.auth.schemas import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    TokenResponse,
+    RefreshTokenResponse,
+    LogoutResponse,
+    MessageResponse,
+)
+from app.features.auth.service import AuthService
+
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=201,
+    summary="Register a new user",
+)
+async def register(
+    data: UserCreate,
+    session: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    """Register a new user account."""
+    service = AuthService(session)
+    return await service.register(data.email, data.password)
+
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    summary="Login user",
+)
+async def login(
+    data: UserLogin,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Login and receive access and refresh tokens."""
+    service = AuthService(session)
+    tokens = await service.login(data.email, data.password)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=settings.refresh_token_lifetime_days * 24 * 60 * 60,
+    )
+
+    return tokens
+
+
+@router.post(
+    "/refresh",
+    response_model=RefreshTokenResponse,
+    summary="Refresh access token",
+)
+async def refresh_token(
+    response: Response,
+    refresh_token: str | None = Cookie(default=None),
+    session: AsyncSession = Depends(get_db),
+) -> RefreshTokenResponse:
+    """Refresh access token using refresh token from cookie."""
+    if not refresh_token:
+        raise UnauthorizedError("No refresh token")
+
+    service = AuthService(session)
+    tokens = await service.refresh(refresh_token)
+
+    response.set_cookie(
+        key="refresh_token",
+        value="",  # Will be cleared
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=0,
+    )
+
+    return tokens
+
+
+@router.post(
+    "/logout",
+    response_model=LogoutResponse,
+    summary="Logout user",
+)
+async def logout(
+    response: Response,
+    authorization: str | None = None,
+    refresh_token: str | None = Cookie(default=None),
+    session: AsyncSession = Depends(get_db),
+) -> LogoutResponse:
+    """Logout user and invalidate tokens."""
+    from app.core.exceptions import UnauthorizedError
+    from app.core.security import decode_token
+
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+        try:
+            payload = decode_token(token)
+            user_id = UUID(payload["sub"])
+            service = AuthService(session)
+            await service.logout(user_id, token)
+        except Exception:
+            pass
+
+    response.delete_cookie("refresh_token")
+
+    return LogoutResponse()
+
+
+from app.core.config import settings  # noqa: E402
+from app.core.exceptions import UnauthorizedError  # noqa: E402
