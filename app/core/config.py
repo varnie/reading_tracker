@@ -68,6 +68,20 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
 
+    # Email
+    smtp_host: str = Field(default="localhost", validation_alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
+    smtp_user: str = Field(default="", validation_alias="SMTP_USER")
+    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(
+        default="noreply@readingtracker.app", validation_alias="SMTP_FROM_EMAIL"
+    )
+    smtp_from_name: str = Field(
+        default="Reading Tracker", validation_alias="SMTP_FROM_NAME"
+    )
+    smtp_tls: bool = Field(default=True, validation_alias="SMTP_TLS")
+    email_enabled: bool = Field(default=False, validation_alias="EMAIL_ENABLED")
+
     # Celery
     celery_broker_url: str = Field(
         default="redis://localhost:6379/1",

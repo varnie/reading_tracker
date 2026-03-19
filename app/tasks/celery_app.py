@@ -10,6 +10,7 @@ celery_app = Celery(
     include=[
         "app.tasks.book_tasks",
         "app.tasks.stats_tasks",
+        "app.tasks.email_tasks",
     ],
 )
 
@@ -40,6 +41,10 @@ celery_app.conf.beat_schedule = {
     },
     "cleanup-old-sessions": {
         "task": "app.tasks.book_tasks.cleanup_old_sessions",
-        "schedule": 604800.0,  # Weekly (Monday)
+        "schedule": 604800.0,  # Weekly
+    },
+    "send-weekly-reports": {
+        "task": "app.tasks.email_tasks.send_weekly_reports_to_all_users",
+        "schedule": 604800.0,  # Weekly (Sunday midnight)
     },
 }

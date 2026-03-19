@@ -11,6 +11,7 @@ REST API for tracking reading progress with books, sessions, and statistics.
 - **Celery Tasks**: Weekly reports, abandoned books detection, leaderboard updates
 - **Event-Driven Architecture**: Features communicate via Event Bus
 - **Repository Pattern**: Clean data access layer
+- **Email Notifications**: Weekly reports, reading reminders (optional)
 
 ## Tech Stack
 
@@ -22,6 +23,7 @@ REST API for tracking reading progress with books, sessions, and statistics.
 | Cache/Broker | Redis |
 | Background Tasks | Celery |
 | Auth | JWT (access + refresh rotation) + Argon2 |
+| Email | aiosmtplib (SMTP) |
 | Python Tools | uv + ruff |
 | Testing | pytest + pytest-cov |
 
@@ -99,6 +101,13 @@ docker compose exec api ruff check .
 | `JWT_SECRET_KEY` | Secret for JWT tokens | (change in production!) |
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `RATE_LIMIT_PER_MINUTE` | API rate limit | `60` |
+| `CORS_ORIGINS` | Allowed origins (comma-separated) | localhost:3000,localhost:8080 |
+| `EMAIL_ENABLED` | Enable email sending | `false` |
+| `SMTP_HOST` | SMTP server host | `localhost` |
+| `SMTP_PORT` | SMTP server port | `587` |
+| `SMTP_USER` | SMTP username | (empty) |
+| `SMTP_PASSWORD` | SMTP password | (empty) |
+| `SMTP_FROM_EMAIL` | From email address | noreply@readingtracker.app |
 
 ## API Endpoints
 
