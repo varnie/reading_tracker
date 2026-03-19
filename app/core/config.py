@@ -62,6 +62,12 @@ class Settings(BaseSettings):
         default=10, validation_alias="RATE_LIMIT_AUTH_PER_MINUTE"
     )
 
+    # CORS
+    cors_origins: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8080"],
+        validation_alias="CORS_ORIGINS",
+    )
+
     # Celery
     celery_broker_url: str = Field(
         default="redis://localhost:6379/1",

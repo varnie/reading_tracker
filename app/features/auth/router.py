@@ -3,6 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.exceptions import UnauthorizedError
 from app.shared.dependencies import get_db
 from app.features.auth.schemas import (
     UserCreate,
@@ -101,7 +103,6 @@ async def logout(
     session: AsyncSession = Depends(get_db),
 ) -> LogoutResponse:
     """Logout user and invalidate tokens."""
-    from app.core.exceptions import UnauthorizedError
     from app.core.security import decode_token
 
     if authorization and authorization.startswith("Bearer "):
@@ -117,7 +118,3 @@ async def logout(
     response.delete_cookie("refresh_token")
 
     return LogoutResponse()
-
-
-from app.core.config import settings  # noqa: E402
-from app.core.exceptions import UnauthorizedError  # noqa: E402

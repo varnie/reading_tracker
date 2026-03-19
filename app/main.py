@@ -45,16 +45,15 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["*"],
     )
 
-    if not settings.is_production:
-        from app.middleware.rate_limit import RateLimitMiddleware
+    from app.middleware.rate_limit import RateLimitMiddleware
 
-        app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware)
 
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException):
