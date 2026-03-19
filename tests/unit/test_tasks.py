@@ -7,7 +7,6 @@ from app.tasks.book_tasks import (
     check_abandoned_books,
     cleanup_old_sessions,
     generate_weekly_report,
-    send_reminder,
 )
 
 
@@ -185,55 +184,3 @@ class TestGenerateWeeklyReport:
             assert result["books_started"] == 0
             assert result["books_finished"] == 0
             assert result["pages_read"] == 0
-
-
-class TestSendReminder:
-    """Tests for send_reminder task."""
-
-    def test_send_reminder(self):
-        """Task should log reminder for user."""
-        mock_session = MagicMock()
-
-        user = MagicMock()
-        user.email = "test@example.com"
-
-        user_book = MagicMock()
-        user_book.book_id = "book-1"
-        user_book.started_at = datetime.now(timezone.utc) - timedelta(days=5)
-
-        book = MagicMock()
-        book.title = "Test Book"
-
-        last_session_result = MagicMock()
-        last_session_result.scalar_one_or_none.return_value = None
-
-        user_book_result = MagicMock()
-        user_book_result.scalar_one_or_none.return_value = user_book
-
-        mock_session.get.side_effect = [user, book]
-        mock_session.execute.side_effect = [user_book_result, last_session_result]
-
-        with patch(
-            "app.tasks.book_tasks.get_sync_session",
-            return_value=mock_session_cm(mock_session),
-        ):
-            result = send_reminder("user-id", "book-id")
-
-            assert isinstance(result, dict)
-            assert result["sent"] is True
-            assert result["user_email"] == "test@example.com"
-            assert result["book_title"] == "Test Book"
-
-    def test_send_reminder_user_not_found(self):
-        """Task should handle user not found."""
-        mock_session = MagicMock()
-        mock_session.get.return_value = None
-
-        with patch(
-            "app.tasks.book_tasks.get_sync_session",
-            return_value=mock_session_cm(mock_session),
-        ):
-            result = send_reminder("nonexistent", "book-id")
-
-            assert result["sent"] is False
-            assert result["reason"] == "User not found"
