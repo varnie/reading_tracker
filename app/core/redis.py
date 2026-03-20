@@ -78,9 +78,7 @@ class Cache:
     async def invalidate_pattern(self, pattern: str) -> int:
         """Invalidate all keys matching pattern."""
         full_pattern = f"{self._prefix}{pattern}"
-        keys = []
-        async for key in self._redis.scan_iter(match=full_pattern):
-            keys.append(key)
+        keys = [key async for key in self._redis.scan_iter(match=full_pattern)]
         if keys:
             return await self._redis.delete(*keys)
         return 0
