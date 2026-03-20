@@ -10,7 +10,7 @@ from app.core.exceptions import (
     TokenExpiredError,
     UnauthorizedError,
 )
-from app.core.redis import TokenBlacklist, get_redis
+from app.core.redis import TokenBlacklist
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -32,10 +32,15 @@ from app.shared.events import event_bus
 class AuthService:
     """Service for authentication operations."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        blacklist: TokenBlacklist | None = None,
+    ) -> None:
         self._session = session
         self._user_repo = UserRepository(session)
         self._token_repo = RefreshTokenRepository(session)
+        self._blacklist = blacklist
 
     async def register(self, email: str, password: str) -> UserResponse:
         """
@@ -136,12 +141,10 @@ class AuthService:
             jti = payload.get("jti")
             exp = payload.get("exp")
 
-            if jti and exp:
+            if jti and exp and self._blacklist:
                 ttl = int(exp - datetime.now(UTC).timestamp())
                 if ttl > 0:
-                    redis_client = await get_redis()
-                    blacklist = TokenBlacklist(redis_client)
-                    await blacklist.blacklist_token(jti, ttl)
+                    await self._blacklist.blacklist_token(jti, ttl)
 
         except Exception:
             pass

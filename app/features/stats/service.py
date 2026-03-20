@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.redis import Cache, get_redis
+from app.core.redis import Cache
 from app.features.stats.repository import StatsRepository
 from app.features.stats.schemas import (
     TopUserEntry,
@@ -14,17 +14,15 @@ from app.features.stats.schemas import (
 class StatsService:
     """Service for statistics operations."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: Cache) -> None:
         self._session = session
         self._repo = StatsRepository(session)
+        self._cache = cache
 
     async def get_user_stats(self, user_id: UUID) -> UserStatsResponse:
         """Get statistics for a user."""
-        redis = await get_redis()
-        cache = Cache(redis)
-
         cache_key = f"user_stats:{user_id}"
-        cached = await cache.get(cache_key)
+        cached = await self._cache.get(cache_key)
 
         if cached:
             return UserStatsResponse(**cached)
@@ -32,7 +30,7 @@ class StatsService:
         stats = await self._repo.get_user_stats(user_id)
 
         response = UserStatsResponse(**stats)
-        await cache.set(cache_key, response.model_dump(), ttl=300)
+        await self._cache.set(cache_key, response.model_dump(), ttl=300)
 
         return response
 
@@ -42,11 +40,8 @@ class StatsService:
         limit: int = 10,
     ) -> TopUsersResponse:
         """Get top users leaderboard."""
-        redis = await get_redis()
-        cache = Cache(redis)
-
         cache_key = f"leaderboard:{period}:{limit}"
-        cached = await cache.get(cache_key)
+        cached = await self._cache.get(cache_key)
 
         if cached:
             return TopUsersResponse(**cached)
@@ -58,6 +53,6 @@ class StatsService:
             users=[TopUserEntry(**u) for u in users],
         )
 
-        await cache.set(cache_key, response.model_dump(), ttl=3600)
+        await self._cache.set(cache_key, response.model_dump(), ttl=3600)
 
         return response

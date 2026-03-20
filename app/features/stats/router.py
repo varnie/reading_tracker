@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.redis import Cache, get_cache
 from app.features.stats.schemas import TopUsersResponse, UserStatsResponse
 from app.features.stats.service import StatsService
 from app.models.user import User
@@ -17,9 +18,10 @@ router = APIRouter(prefix="/stats", tags=["stats"])
 async def get_user_stats(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
+    cache: Cache = Depends(get_cache),
 ) -> UserStatsResponse:
     """Get statistics for the current user."""
-    service = StatsService(session)
+    service = StatsService(session, cache)
     return await service.get_user_stats(user.id)
 
 
@@ -35,7 +37,8 @@ async def get_top_users(
     ),
     limit: int = Query(default=10, ge=1, le=50),
     session: AsyncSession = Depends(get_db),
+    cache: Cache = Depends(get_cache),
 ) -> TopUsersResponse:
     """Get top readers leaderboard."""
-    service = StatsService(session)
+    service = StatsService(session, cache)
     return await service.get_top_users(period=period, limit=limit)

@@ -1,4 +1,18 @@
+import logging
+
+from app.core.redis import Cache, get_redis_client
 from app.shared.events import Event, event_bus
+
+_cache: Cache | None = None
+
+
+def _get_cache() -> Cache:
+    """Get cached Cache instance (for event handlers)."""
+    global _cache
+    if _cache is None:
+        redis_client = get_redis_client()
+        _cache = Cache(redis_client)
+    return _cache
 
 
 class StatsEvents:
@@ -7,73 +21,53 @@ class StatsEvents:
     @staticmethod
     async def on_book_finished(event: Event) -> None:
         """Handler: invalidate user stats cache when book is finished."""
-        from app.core.redis import Cache, get_redis
-
+        cache = _get_cache()
         user_id = event.data.get("user_id")
         if user_id:
-            redis = await get_redis()
-            cache = Cache(redis)
             await cache.delete(f"user_stats:{user_id}")
 
     @staticmethod
     async def on_book_added(event: Event) -> None:
         """Handler: invalidate user stats cache when book is added."""
-        from app.core.redis import Cache, get_redis
-
+        cache = _get_cache()
         user_id = event.data.get("user_id")
         if user_id:
-            redis = await get_redis()
-            cache = Cache(redis)
             await cache.delete(f"user_stats:{user_id}")
             await cache.invalidate_pattern("leaderboard:*")
 
     @staticmethod
     async def on_session_created(event: Event) -> None:
         """Handler: invalidate user stats cache when session is created."""
-        from app.core.redis import Cache, get_redis
-
+        cache = _get_cache()
         user_id = event.data.get("user_id")
         if user_id:
-            redis = await get_redis()
-            cache = Cache(redis)
             await cache.delete(f"user_stats:{user_id}")
             await cache.invalidate_pattern("leaderboard:*")
 
     @staticmethod
     async def on_book_deleted(event: Event) -> None:
         """Handler: invalidate user stats cache when book is deleted."""
-        from app.core.redis import Cache, get_redis
-
+        cache = _get_cache()
         user_id = event.data.get("user_id")
         if user_id:
-            redis = await get_redis()
-            cache = Cache(redis)
             await cache.delete(f"user_stats:{user_id}")
             await cache.invalidate_pattern("leaderboard:*")
 
     @staticmethod
     async def on_catalog_book_added(event: Event) -> None:
         """Handler: invalidate catalog stats cache when book is added."""
-        from app.core.redis import Cache, get_redis
-
-        redis = await get_redis()
-        cache = Cache(redis)
+        cache = _get_cache()
         await cache.delete("catalog:stats")
 
     @staticmethod
     async def on_user_registered(event: Event) -> None:
         """Handler: track new user registration for weekly reports."""
-        import logging
-
-        from app.core.redis import Cache, get_redis
-
         logger = logging.getLogger(__name__)
+        cache = _get_cache()
         user_id = event.data.get("user_id")
         email = event.data.get("email")
 
         if user_id:
-            redis = await get_redis()
-            cache = Cache(redis)
             await cache.set(
                 f"user:{user_id}:registered", {"email": email}, ttl=86400 * 365
             )
@@ -83,16 +77,12 @@ class StatsEvents:
     @staticmethod
     async def on_user_logged_in(event: Event) -> None:
         """Handler: track user login for activity reports."""
-        import logging
-
-        from app.core.redis import Cache, get_redis
 
         logger = logging.getLogger(__name__)
+        cache = _get_cache()
         user_id = event.data.get("user_id")
 
         if user_id:
-            redis = await get_redis()
-            cache = Cache(redis)
             await cache.set(f"user:{user_id}:last_login", event.data, ttl=86400 * 30)
             logger.debug(f"Tracked user login: {user_id}")
 

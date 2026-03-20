@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import UnauthorizedError
+from app.core.redis import TokenBlacklist, get_blacklist
 from app.features.auth.schemas import (
     LogoutResponse,
     RefreshTokenResponse,
@@ -99,6 +100,7 @@ async def logout(
     authorization: str | None = None,
     refresh_token: str | None = Cookie(default=None),
     session: AsyncSession = Depends(get_db),
+    blacklist: TokenBlacklist = Depends(get_blacklist),
 ) -> LogoutResponse:
     """Logout user and invalidate tokens."""
     from app.core.security import decode_token
@@ -108,7 +110,7 @@ async def logout(
         try:
             payload = decode_token(token)
             user_id = UUID(payload["sub"])
-            service = AuthService(session)
+            service = AuthService(session, blacklist)
             await service.logout(user_id, token)
         except Exception:
             pass
