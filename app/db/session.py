@@ -1,8 +1,6 @@
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
@@ -10,69 +8,67 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import settings
 
-_engine: AsyncEngine | None = None
-_session_factory: async_sessionmaker[AsyncSession] | None = None
 
+class DatabaseSessionManager:
+    """Database session manager - the FastAPI way."""
 
-def get_engine() -> AsyncEngine:
-    """Get or create database engine."""
-    global _engine
-    if _engine is None:
-        _engine = create_async_engine(
+    def __init__(self) -> None:
+        self._engine = create_async_engine(
             settings.database_url,
             pool_size=settings.database_pool_size,
             max_overflow=settings.database_max_overflow,
             echo=settings.is_development,
         )
-    return _engine
-
-
-def get_session_factory() -> async_sessionmaker[AsyncSession]:
-    """Get or create session factory."""
-    global _session_factory
-    if _session_factory is None:
-        _session_factory = async_sessionmaker(
-            bind=get_engine(),
+        self._session_maker = async_sessionmaker(
+            bind=self._engine,
             class_=AsyncSession,
             expire_on_commit=False,
             autoflush=False,
             autocommit=False,
         )
-    return _session_factory
+
+    async def close(self) -> None:
+        """Close database connections."""
+        await self._engine.dispose()
+
+    async def get_session(self) -> AsyncGenerator[AsyncSession]:
+        """Get database session as async context manager."""
+        async with self._session_maker() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    async def init_db(self) -> None:
+        """Initialize database tables."""
+        import app.models  # noqa: F401 - imports all models to register them
+        from app.models.base import Base
+
+        async with self._engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
 
-@asynccontextmanager
-async def get_db_session() -> AsyncGenerator[AsyncSession]:
-    """Get database session as async context manager."""
-    session_factory = get_session_factory()
-    async with session_factory() as session:
+db_manager = DatabaseSessionManager()
+
+
+async def init_db() -> None:
+    """Initialize database tables."""
+    await db_manager.init_db()
+
+
+async def close_db() -> None:
+    """Close database connections."""
+    await db_manager.close()
+
+
+async def get_db() -> AsyncGenerator[AsyncSession]:
+    """Dependency to get database session."""
+    async with db_manager._session_maker() as session:
         try:
             yield session
             await session.commit()
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
-
-
-async def init_db() -> None:
-    """Initialize database tables."""
-    from app.models.book import Book  # noqa: F401
-    from app.models.reading_session import ReadingSession  # noqa: F401
-    from app.models.user import User  # noqa: F401
-    from app.models.user_book import UserBook  # noqa: F401
-    from app.shared.models import Base
-
-    engine = get_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-async def close_db() -> None:
-    """Close database connections."""
-    global _engine, _session_factory
-    if _engine:
-        await _engine.dispose()
-        _engine = None
-        _session_factory = None
