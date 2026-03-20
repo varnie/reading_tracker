@@ -1,7 +1,9 @@
+name: reading-tracker-dev
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: reading_tracker_postgres
+    container_name: reading-tracker-dev-postgres
     environment:
       POSTGRES_DB: reading_tracker
       POSTGRES_USER: postgres
@@ -18,7 +20,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: reading_tracker_redis
+    container_name: reading-tracker-dev-redis
     ports:
       - "6379:6379"
     volumes:
@@ -33,7 +35,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: reading_tracker_api
+    container_name: reading-tracker-dev-api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
     ports:
       - "8000:8000"
     env_file:
@@ -52,8 +55,9 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
-    container_name: reading_tracker_worker
+      dockerfile: Dockerfile
+      target: production-worker
+    container_name: reading-tracker-dev-worker
     env_file:
       - .env.docker
     depends_on:
@@ -61,17 +65,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - .:/app
     profiles:
       - celery
 
   beat:
     build:
       context: .
-      dockerfile: Dockerfile.worker
-    container_name: reading_tracker_beat
-    command: ["uv", "run", "celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+      dockerfile: Dockerfile
+      target: production-worker
+    container_name: reading-tracker-dev-beat
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
     env_file:
       - .env.docker
     depends_on:
@@ -79,8 +82,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - .:/app
     profiles:
       - celery
 

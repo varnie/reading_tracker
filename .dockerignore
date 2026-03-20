@@ -1,26 +1,76 @@
+# Git
 .git
 .gitignore
+.gitattributes
+
+# Environment files (secrets)
 .env
 .env.*
+!.env.example
+
+# Documentation
 *.md
 !README.md
+
+# Docker
 Dockerfile*
 docker-compose*.yml
+
+# Tests
 tests/
-docs/
-*.log
-__pycache__/
-*.pyc
+coverage/
 .pytest_cache/
-.coverage
-htmlcov/
+cov.xml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
 .venv/
 venv/
+ENV/
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*.swn
+*.sublime-workspace
+*.sublime-project
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Logs
+*.log
+logs/
+celerybeat-schedule
+
+# Coverage
+.coverage
+htmlcov/
 .mypy_cache/
 .ruff_cache/
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Local development
+.dockerignore
+.editorconfig
+.pre-commit-config.yaml
+tasks.py

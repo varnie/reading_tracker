@@ -1,7 +1,9 @@
+name: reading-tracker-prod
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: reading_tracker_prod_postgres
+    container_name: reading-tracker-prod-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-reading_tracker}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -29,14 +31,19 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: reading_tracker_prod_redis
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    container_name: reading-tracker-prod-redis
+    command: >
+      sh -c 'if [ -n "$REDIS_PASSWORD" ]; then
+        redis-server --requirepass "$$REDIS_PASSWORD";
+      else
+        redis-server;
+      fi'
     ports:
       - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "sh", "-c", "redis-cli -n 0 ping$${REDIS_PASSWORD:+ -a $$REDIS_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -55,9 +62,9 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.prod
-    image: reading-tracker-api:latest
-    container_name: reading_tracker_prod_api
+      dockerfile: Dockerfile
+    container_name: reading-tracker-prod-api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
     ports:
       - "${API_PORT:-8001}:8000"
     environment:
@@ -107,9 +114,9 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.prod
-    image: reading-tracker-worker:latest
-    container_name: reading_tracker_prod_worker
+      dockerfile: Dockerfile
+      target: production-worker
+    container_name: reading-tracker-prod-worker
     environment:
       APP_ENV: production
       APP_VERSION: ${APP_VERSION:-v1}
@@ -146,10 +153,10 @@ services:
   beat:
     build:
       context: .
-      dockerfile: Dockerfile.prod
-    image: reading-tracker-worker:latest
-    container_name: reading_tracker_prod_beat
-    command: [".venv/bin/celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+      dockerfile: Dockerfile
+      target: production-worker
+    container_name: reading-tracker-prod-beat
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
     environment:
       APP_ENV: production
       APP_VERSION: ${APP_VERSION:-v1}
