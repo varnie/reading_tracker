@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.shared.models import Base, UUIDMixin
+from app.models.base import Base, UUIDMixin
 
 
 class ReadingSession(Base, UUIDMixin):

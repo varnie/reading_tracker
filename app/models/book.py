@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.shared.models import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin, UUIDMixin
 
 
 class Book(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
