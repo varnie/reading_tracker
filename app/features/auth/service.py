@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -27,6 +28,8 @@ from app.features.auth.schemas import (
     UserResponse,
 )
 from app.shared.events import event_bus
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -147,7 +150,9 @@ class AuthService:
                     await self._blacklist.blacklist_token(jti, ttl)
 
         except Exception:
-            pass
+            logger.warning(
+                f"Failed to blacklist token during logout for user {user_id}"
+            )
 
         await self._token_repo.revoke_all_for_user(user_id)
         await event_bus.publish(AuthEvents.user_logged_out(str(user_id)))

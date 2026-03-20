@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, Response
@@ -16,6 +17,8 @@ from app.features.auth.schemas import (
 )
 from app.features.auth.service import AuthService
 from app.shared.dependencies import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -113,7 +116,7 @@ async def logout(
             service = AuthService(session, blacklist)
             await service.logout(user_id, token)
         except Exception:
-            pass
+            logger.warning("Failed to blacklist token during logout")
 
     response.delete_cookie("refresh_token")
 

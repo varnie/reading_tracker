@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.app_env == "development"
+
+    @model_validator(mode="after")
+    def validate_production_config(self) -> "Settings":
+        if self.app_env == "production" and "change-me" in self.jwt_secret_key.lower():
+            raise ValueError(
+                "JWT_SECRET_KEY must be changed from default value in production"
+            )
+        return self
 
 
 settings = Settings()

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -6,6 +7,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
 from app.core.redis import get_redis_client
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -32,23 +35,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         key = f"rate_limit:{client_ip}:{path}"
 
-        redis = get_redis_client()
+        try:
+            redis = get_redis_client()
+            current_count = await redis.incr(key)
+            current_ttl = await redis.ttl(key)
+            if current_count == 1 or current_ttl == -1:
+                await redis.expire(key, 60)
 
-        current_count = await redis.incr(key)
-        current_ttl = await redis.ttl(key)
-        if current_count == 1 or current_ttl == -1:
-            await redis.expire(key, 60)
+            if current_count > limit:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Rate limit exceeded"},
+                    headers={
+                        "Retry-After": str(current_ttl) if current_ttl > 0 else "60",
+                        "X-RateLimit-Limit": str(limit),
+                        "X-RateLimit-Remaining": "0",
+                    },
+                )
 
-        if current_count > limit:
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Rate limit exceeded"},
-                headers={
-                    "Retry-After": str(current_ttl) if current_ttl > 0 else "60",
-                    "X-RateLimit-Limit": str(limit),
-                    "X-RateLimit-Remaining": "0",
-                },
-            )
+        except Exception:
+            logger.warning("Redis error during rate limiting, allowing request")
+            return await call_next(request)
 
         response = await call_next(request)
 
