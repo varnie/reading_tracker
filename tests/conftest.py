@@ -31,7 +31,7 @@ async def fake_redis():
 @pytest_asyncio.fixture(scope="function")
 async def test_engine():
     """Create test database engine with SQLite."""
-    from app.shared.models import Base
+    from app.models.base import Base
 
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
@@ -60,19 +60,20 @@ async def test_session_maker(test_engine):
 @pytest_asyncio.fixture(scope="function")
 async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
     """Create a test client with fake Redis and SQLite."""
-    import app.features.stats.service as stats_service_module
-
-    redis_patch = patch("app.core.redis.get_redis", return_value=fake_redis)
-    stats_patch = patch.object(
-        stats_service_module, "get_redis", return_value=fake_redis
+    from app.core.redis import (
+        Cache,
+        TokenBlacklist,
+        get_blacklist,
+        get_cache,
     )
-    uuid_patch = patch("uuid.uuid4", return_value=FIXED_UUID)
-    models_uuid_patch = patch("app.shared.models.uuid.uuid4", return_value=FIXED_UUID)
 
-    redis_patch.start()
-    stats_patch.start()
+    uuid_patch = patch("uuid.uuid4", return_value=FIXED_UUID)
+    models_uuid_patch = patch("app.models.base.uuid.uuid4", return_value=FIXED_UUID)
+    redis_patch = patch("app.core.redis.get_redis_client", return_value=fake_redis)
+
     uuid_patch.start()
     models_uuid_patch.start()
+    redis_patch.start()
 
     from app.main import app
 
@@ -85,21 +86,28 @@ async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
                 await session.rollback()
                 raise
 
+    def mock_get_cache_instance():
+        return Cache(fake_redis)
+
+    def mock_get_blacklist_instance():
+        return TokenBlacklist(fake_redis)
+
     app.dependency_overrides.clear()
 
     from app.shared.dependencies import get_db
 
     app.dependency_overrides[get_db] = mock_get_db
+    app.dependency_overrides[get_cache] = mock_get_cache_instance
+    app.dependency_overrides[get_blacklist] = mock_get_blacklist_instance
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     app.dependency_overrides.clear()
+    redis_patch.stop()
     uuid_patch.stop()
     models_uuid_patch.stop()
-    stats_patch.stop()
-    redis_patch.stop()
 
 
 @pytest.fixture
