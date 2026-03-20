@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import UTC
 from unittest.mock import MagicMock, patch
 
+from app.core.enums import Period
 from app.tasks.stats_tasks import (
     calculate_user_streaks,
     update_leaderboard,
@@ -136,9 +137,9 @@ class TestUpdateLeaderboard:
 
             mock_session.execute.return_value = leaderboard_result
 
-            result_data = update_leaderboard(period="week")
+            result_data = update_leaderboard(period=Period.WEEK)
 
-            assert result_data["period"] == "week"
+            assert result_data["period"] == Period.WEEK
             assert result_data["users"] == []
 
     def test_update_leaderboard_all(self):
@@ -157,6 +158,6 @@ class TestUpdateLeaderboard:
 
             mock_session.execute.return_value = leaderboard_result
 
-            result_data = update_leaderboard(period="all")
+            result_data = update_leaderboard(period=Period.ALL)
 
-            assert result_data["period"] == "all"
+            assert result_data["period"] == Period.ALL

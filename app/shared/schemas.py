@@ -6,6 +6,14 @@ from pydantic import BaseModel, ConfigDict, Field
 T = TypeVar("T")
 
 
+class HealthResponse(BaseModel):
+    """Health check response."""
+
+    status: str = "healthy"
+    version: str = "0.1.0"
+    timestamp: datetime
+
+
 class PaginationParams(BaseModel):
     """Common pagination parameters."""
 
@@ -23,34 +31,3 @@ class PaginatedResponse(BaseModel, Generic[T]):
     page: int
     per_page: int
     pages: int
-
-
-class TimestampSchema(BaseModel):
-    """Schema with timestamp fields."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    created_at: datetime
-    updated_at: datetime | None = None
-
-
-class ErrorResponse(BaseModel):
-    """Standard error response."""
-
-    detail: str
-    error_code: str | None = None
-
-
-class SuccessResponse(BaseModel):
-    """Standard success response."""
-
-    success: bool = True
-    message: str | None = None
-
-
-class HealthResponse(BaseModel):
-    """Health check response."""
-
-    status: str = "healthy"
-    version: str = "0.1.0"
-    timestamp: datetime

@@ -3,6 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.core.enums import BookStatus
+from app.shared.schemas import PaginatedResponse
 
 
 class BookCreate(BaseModel):
@@ -38,11 +39,4 @@ class BookResponse(BaseModel):
     book_pages_total: int
 
 
-class BookListResponse(BaseModel):
-    """Schema for paginated book list response."""
-
-    items: list[BookResponse]
-    total: int
-    page: int
-    per_page: int
-    pages: int
+BookListResponse = PaginatedResponse[BookResponse]

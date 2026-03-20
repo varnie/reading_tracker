@@ -2,6 +2,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.shared.schemas import PaginatedResponse
+
 
 class CatalogBookCreate(BaseModel):
     """Schema for creating a book in catalog."""
@@ -28,11 +30,4 @@ class CatalogBookResponse(BaseModel):
     created_by_user_id: str
 
 
-class CatalogBookListResponse(BaseModel):
-    """Schema for paginated catalog response."""
-
-    items: list[CatalogBookResponse]
-    total: int
-    page: int
-    per_page: int
-    pages: int
+CatalogBookListResponse = PaginatedResponse[CatalogBookResponse]

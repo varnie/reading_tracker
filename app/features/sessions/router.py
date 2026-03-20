@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sessions.schemas import (
@@ -22,16 +22,25 @@ router = APIRouter(tags=["sessions"])
 )
 async def list_sessions(
     book_id: UUID,
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=20, ge=1, le=100),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ) -> SessionListResponse:
     """List all reading sessions for a book."""
     service = SessionService(session)
-    sessions = await service.list_sessions(user.id, book_id)
+    sessions, total = await service.list_sessions(
+        user.id, book_id, page=page, per_page=per_page
+    )
+
+    pages = (total + per_page - 1) // per_page if total > 0 else 1
 
     return SessionListResponse(
         items=sessions,
-        total=len(sessions),
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=pages,
     )
 
 

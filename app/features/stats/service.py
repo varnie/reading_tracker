@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.enums import Period
 from app.core.redis import Cache
 from app.features.stats.repository import StatsRepository
 from app.features.stats.schemas import (
@@ -36,11 +37,11 @@ class StatsService:
 
     async def get_top_users(
         self,
-        period: str = "month",
+        period: Period = Period.MONTH,
         limit: int = 10,
     ) -> TopUsersResponse:
         """Get top users leaderboard."""
-        cache_key = f"leaderboard:{period}:{limit}"
+        cache_key = f"leaderboard:{period.value}:{limit}"
         cached = await self._cache.get(cache_key)
 
         if cached:
@@ -49,7 +50,7 @@ class StatsService:
         users = await self._repo.get_top_users(period=period, limit=limit)
 
         response = TopUsersResponse(
-            period=period,
+            period=period.value,
             users=[TopUserEntry(**u) for u in users],
         )
 

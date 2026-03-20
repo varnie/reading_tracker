@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 
-from app.core.enums import BookStatus
+from app.core.enums import BookStatus, Period
 from app.core.logging import get_logger
 from app.models.reading_session import ReadingSession
 from app.models.user import User
@@ -95,7 +95,7 @@ def calculate_user_streaks() -> dict:
 
 
 @celery_app.task
-def update_leaderboard(period: str = "month", limit: int = 10) -> dict:
+def update_leaderboard(period: Period = Period.MONTH, limit: int = 10) -> dict:
     """
     Update the top users leaderboard cache in Redis.
 
@@ -111,9 +111,9 @@ def update_leaderboard(period: str = "month", limit: int = 10) -> dict:
     redis_client = get_sync_redis()
 
     with get_sync_session() as session:
-        if period == "week":
+        if period == Period.WEEK:
             cutoff = datetime.now(UTC) - timedelta(days=7)
-        elif period == "month":
+        elif period == Period.MONTH:
             cutoff = datetime.now(UTC) - timedelta(days=30)
         else:
             cutoff = None

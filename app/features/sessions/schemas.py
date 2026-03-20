@@ -2,6 +2,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.shared.schemas import PaginatedResponse
+
 
 class SessionCreate(BaseModel):
     """Schema for creating a reading session."""
@@ -31,8 +33,4 @@ class SessionResponse(BaseModel):
     notes: str | None
 
 
-class SessionListResponse(BaseModel):
-    """Schema for session list response."""
-
-    items: list[SessionResponse]
-    total: int
+SessionListResponse = PaginatedResponse[SessionResponse]

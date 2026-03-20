@@ -39,14 +39,29 @@ class SessionRepository:
     async def list_by_user_book(
         self,
         user_book_id: UUID,
-    ) -> list[ReadingSession]:
-        """List all sessions for a user's book."""
-        result = await self._session.execute(
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[list[ReadingSession], int]:
+        """List all sessions for a user's book with pagination."""
+        query = (
             select(ReadingSession)
             .where(ReadingSession.user_book_id == user_book_id)
             .order_by(ReadingSession.started_at.desc())
         )
-        return list(result.scalars().all())
+
+        count_query = select(ReadingSession.id).where(
+            ReadingSession.user_book_id == user_book_id
+        )
+
+        query = query.offset((page - 1) * per_page).limit(per_page)
+
+        result = await self._session.execute(query)
+        count_result = await self._session.execute(count_query)
+
+        items = list(result.scalars().all())
+        total = len(list(count_result.scalars().all()))
+
+        return items, total
 
     async def update(
         self,

@@ -1,9 +1,10 @@
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import BookStatus
+from app.core.enums import BookStatus, Period
 from app.models.user_book import UserBook
 
 
@@ -42,20 +43,31 @@ class StatsRepository:
 
     async def get_top_users(
         self,
-        period: str = "month",
+        period: Period = Period.MONTH,
         limit: int = 10,
     ) -> list[dict]:
         """Get top users by reading activity."""
         from sqlalchemy import desc
 
+        now = datetime.now(UTC)
+        if period == Period.WEEK:
+            start_date = now - timedelta(days=7)
+        elif period == Period.MONTH:
+            start_date = now - timedelta(days=30)
+        else:
+            start_date = None
+
+        query = select(
+            UserBook.user_id,
+            func.count(UserBook.id).label("books_finished"),
+            func.sum(UserBook.pages_read).label("pages_read"),
+        ).where(UserBook.status == BookStatus.FINISHED)
+
+        if start_date:
+            query = query.where(UserBook.finished_at >= start_date)
+
         result = await self._session.execute(
-            select(
-                UserBook.user_id,
-                func.count(UserBook.id).label("books_finished"),
-                func.sum(UserBook.pages_read).label("pages_read"),
-            )
-            .where(UserBook.status == BookStatus.FINISHED)
-            .group_by(UserBook.user_id)
+            query.group_by(UserBook.user_id)
             .order_by(desc(func.count(UserBook.id)))
             .limit(limit)
         )

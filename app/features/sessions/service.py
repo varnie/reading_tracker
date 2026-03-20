@@ -61,13 +61,17 @@ class SessionService:
         self,
         user_id: UUID,
         book_id: UUID,
-    ) -> list[SessionResponse]:
-        """List all sessions for a user's book."""
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[list[SessionResponse], int]:
+        """List all sessions for a user's book with pagination."""
         user_book = await self._book_repo.get_by_id(book_id, user_id)
         if not user_book:
             raise NotFoundError("Book")
 
-        sessions = await self._repo.list_by_user_book(book_id)
+        sessions, total = await self._repo.list_by_user_book(
+            book_id, page=page, per_page=per_page
+        )
 
         return [
             SessionResponse(
@@ -79,4 +83,4 @@ class SessionService:
                 notes=s.notes,
             )
             for s in sessions
-        ]
+        ], total

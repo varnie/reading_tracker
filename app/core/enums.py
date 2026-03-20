@@ -6,3 +6,9 @@ class BookStatus(StrEnum):
     READING = "reading"
     FINISHED = "finished"
     ABANDONED = "abandoned"
+
+
+class Period(StrEnum):
+    WEEK = "week"
+    MONTH = "month"
+    ALL = "all"

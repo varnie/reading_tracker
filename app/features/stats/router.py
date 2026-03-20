@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.enums import Period
 from app.core.redis import Cache, get_cache
 from app.features.stats.schemas import TopUsersResponse, UserStatsResponse
 from app.features.stats.service import StatsService
@@ -31,8 +32,8 @@ async def get_user_stats(
     summary="Get top users",
 )
 async def get_top_users(
-    period: str = Query(
-        default="month",
+    period: Period = Query(
+        default=Period.MONTH,
         description="Time period: week, month, or all",
     ),
     limit: int = Query(default=10, ge=1, le=50),

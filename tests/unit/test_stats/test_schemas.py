@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.enums import Period
 from app.features.stats.repository import StatsRepository
 from app.features.stats.schemas import TopUserEntry, TopUsersResponse, UserStatsResponse
 
@@ -107,7 +108,7 @@ class TestStatsRepository:
         mock_session.execute.return_value = mock_result
 
         repo = StatsRepository(mock_session)
-        result = await repo.get_top_users(period="month", limit=10)
+        result = await repo.get_top_users(period=Period.MONTH, limit=10)
 
         assert len(result) == 2
         assert result[0]["rank"] == 1
