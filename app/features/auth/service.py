@@ -125,8 +125,19 @@ class AuthService:
 
         access_token, jti = create_access_token(str(stored_token.user_id))
 
+        # Refresh rotation: revoke old refresh token and issue a new one.
+        new_refresh_token = create_refresh_token()
+        new_token_hash = hash_token(new_refresh_token)
+        new_expires_at = datetime.now(UTC) + timedelta(
+            days=settings.refresh_token_lifetime_days
+        )
+        await self._token_repo.create(
+            stored_token.user_id, new_token_hash, new_expires_at
+        )
+
         return RefreshTokenResponse(
             access_token=access_token,
+            refresh_token=new_refresh_token,
             expires_in=settings.access_token_lifetime_minutes * 60,
             token_jti=jti,
         )

@@ -174,7 +174,7 @@ reading_tracker/
 ├── tests/
 │   ├── unit/
 │   └── integration/
-├── docs/
+├── docs/                          # Architecture + production notes
 ├── Dockerfile                   # Multi-stage build
 ├── docker-compose.yml           # Development
 ├── docker-compose.prod.yml      # Production (uses .env.prod)

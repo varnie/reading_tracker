@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import UnauthorizedError
+from app.core.redis import TokenBlacklist, get_blacklist
 from app.core.security import decode_token
 from app.db.session import get_db
 from app.models.user import User
@@ -15,6 +16,7 @@ security = HTTPBearer(auto_error=False)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
+    blacklist: TokenBlacklist = Depends(get_blacklist),
 ) -> User:
     """
     Dependency to get current authenticated user from JWT token.
@@ -30,9 +32,13 @@ async def get_current_user(
     try:
         payload = decode_token(token)
         user_id = payload.get("sub")
+        jti = payload.get("jti")
 
         if not user_id:
             raise UnauthorizedError("Invalid token payload")
+
+        if jti and await blacklist.is_blacklisted(jti):
+            raise UnauthorizedError("Token has been revoked")
 
         user = await db.get(User, UUID(user_id))
 
@@ -41,5 +47,7 @@ async def get_current_user(
 
         return user
 
+    except UnauthorizedError:
+        raise
     except Exception as e:
         raise UnauthorizedError("Could not validate credentials") from e

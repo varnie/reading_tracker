@@ -1,9 +1,10 @@
+import json
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import Period
-from app.core.redis import Cache
+from app.core.redis import Cache, get_redis_client
 from app.features.stats.repository import StatsRepository
 from app.features.stats.schemas import (
     TopUserEntry,
@@ -29,6 +30,23 @@ class StatsService:
             return UserStatsResponse(**cached)
 
         stats = await self._repo.get_user_stats(user_id)
+
+        # Streaks are computed asynchronously by Celery and stored under `streak:{user_id}`.
+        # We keep the DB stats aggregation simple and enrich with Redis-derived streak values here.
+        try:
+            redis = get_redis_client()
+            streak_raw = await redis.get(f"streak:{user_id}")
+            if streak_raw:
+                streak = json.loads(streak_raw)
+                stats["current_streak"] = streak.get(
+                    "current_streak", stats.get("current_streak", 0)
+                )
+                stats["longest_streak"] = streak.get(
+                    "longest_streak", stats.get("longest_streak", 0)
+                )
+        except Exception:
+            # Stats should still be returned even if Redis is temporarily unavailable.
+            pass
 
         response = UserStatsResponse(**stats)
         await self._cache.set(cache_key, response.model_dump(), ttl=300)

@@ -105,14 +105,10 @@ class BookService:
 
     async def _to_response(self, user_book) -> BookResponse:
         """Convert UserBook model to response."""
-        from sqlalchemy import select
-
-        from app.models.book import Book
-
-        result = await self._session.execute(
-            select(Book).where(Book.id == user_book.book_id)
-        )
-        catalog_book = result.scalar_one()
+        catalog_book = await self._catalog_repo.get_by_id(user_book.book_id)
+        if not catalog_book:
+            # CatalogRepository filters out soft-deleted books.
+            raise NotFoundError("Book")
 
         return BookResponse(
             id=user_book.id,

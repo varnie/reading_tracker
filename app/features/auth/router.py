@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, Response
+from fastapi import APIRouter, Cookie, Depends, Header, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -83,11 +83,11 @@ async def refresh_token(
 
     response.set_cookie(
         key="refresh_token",
-        value="",  # Will be cleared
+        value=tokens.refresh_token,
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=0,
+        max_age=settings.refresh_token_lifetime_days * 24 * 60 * 60,
     )
 
     return tokens
@@ -100,7 +100,7 @@ async def refresh_token(
 )
 async def logout(
     response: Response,
-    authorization: str | None = None,
+    authorization: str | None = Header(default=None),
     refresh_token: str | None = Cookie(default=None),
     session: AsyncSession = Depends(get_db),
     blacklist: TokenBlacklist = Depends(get_blacklist),
@@ -109,7 +109,7 @@ async def logout(
     from app.core.security import decode_token
 
     if authorization and authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "")
+        token = authorization[len("Bearer ") :].strip()
         try:
             payload = decode_token(token)
             user_id = UUID(payload["sub"])

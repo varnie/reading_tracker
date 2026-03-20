@@ -163,6 +163,13 @@ class TestAuthLogout:
         data = response.json()
         assert data["message"] == "Logged out successfully"
 
+        # Access token should be rejected after logout (blacklist enforced).
+        protected_resp = await client.get(
+            f"{api_prefix}/books",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert protected_resp.status_code == 401
+
     async def test_logout_without_token(self, client: AsyncClient, api_prefix: str):
         """Should logout even without token (no-op)."""
         response = await client.post(f"{api_prefix}/auth/logout")
@@ -192,8 +199,25 @@ class TestAuthRefresh:
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
+        assert "refresh_token" in data
         assert "expires_in" in data
         assert data["token_type"] == "bearer"
+
+        new_refresh_token = data["refresh_token"]
+
+        # Old refresh token should be revoked after rotation.
+        old_refresh_resp = await client.post(
+            f"{api_prefix}/auth/refresh",
+            cookies={"refresh_token": refresh_token},
+        )
+        assert old_refresh_resp.status_code == 401
+
+        # New refresh token should work.
+        new_refresh_resp = await client.post(
+            f"{api_prefix}/auth/refresh",
+            cookies={"refresh_token": new_refresh_token},
+        )
+        assert new_refresh_resp.status_code == 200
 
     async def test_refresh_without_token(self, client: AsyncClient, api_prefix: str):
         """Should fail without refresh token."""

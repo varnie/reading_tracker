@@ -41,6 +41,7 @@ class RefreshTokenResponse(BaseModel):
     """Schema for refresh token response."""
 
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
     token_jti: str

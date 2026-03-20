@@ -139,7 +139,7 @@ class TestUpdateLeaderboard:
 
             result_data = update_leaderboard(period=Period.WEEK)
 
-            assert result_data["period"] == Period.WEEK
+            assert result_data["period"] == "week"
             assert result_data["users"] == []
 
     def test_update_leaderboard_all(self):
@@ -160,4 +160,4 @@ class TestUpdateLeaderboard:
 
             result_data = update_leaderboard(period=Period.ALL)
 
-            assert result_data["period"] == Period.ALL
+            assert result_data["period"] == "all"

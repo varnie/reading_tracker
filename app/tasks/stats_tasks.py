@@ -106,14 +106,18 @@ def update_leaderboard(period: Period = Period.MONTH, limit: int = 10) -> dict:
     Returns:
         Leaderboard data.
     """
-    logger.info(f"Running update_leaderboard task (period={period}, limit={limit})")
+    logger.info(
+        f"Running update_leaderboard task (period={period}, limit={limit})"
+    )
 
     redis_client = get_sync_redis()
 
+    period_value = period.value if hasattr(period, "value") else str(period)
+
     with get_sync_session() as session:
-        if period == Period.WEEK:
+        if period_value == Period.WEEK.value:
             cutoff = datetime.now(UTC) - timedelta(days=7)
-        elif period == Period.MONTH:
+        elif period_value == Period.MONTH.value:
             cutoff = datetime.now(UTC) - timedelta(days=30)
         else:
             cutoff = None
@@ -133,9 +137,6 @@ def update_leaderboard(period: Period = Period.MONTH, limit: int = 10) -> dict:
 
         leaderboard = []
         for rank, row in enumerate(result, 1):
-            user = session.get(User, row.user_id)
-            user_email = user.email if user else "unknown"
-
             total_pages = (
                 session.execute(
                     select(func.sum(UserBook.pages_read)).where(
@@ -155,20 +156,24 @@ def update_leaderboard(period: Period = Period.MONTH, limit: int = 10) -> dict:
                 {
                     "rank": rank,
                     "user_id": str(row.user_id),
-                    "user_email": user_email,
                     "books_finished": row.finished_count,
                     "pages_read": total_pages,
                     "streak_days": streak_days,
                 }
             )
 
-        cache_key = f"leaderboard:{period}:{limit}"
-        redis_client.setex(cache_key, 3600, json.dumps(leaderboard))
+        # Keep cache format identical to app/core/redis.Cache + TopUsersResponse.
+        cache_key = f"cache:leaderboard:{period_value}:{limit}"
+        payload = {
+            "period": period_value,
+            "users": leaderboard,
+        }
+        redis_client.setex(cache_key, 3600, json.dumps(payload))
 
         logger.info(
-            f"Updated leaderboard for period={period}: {len(leaderboard)} users"
+            f"Updated leaderboard for period={period_value}: {len(leaderboard)} users"
         )
         return {
-            "period": period,
+            "period": period_value,
             "users": leaderboard,
         }

@@ -172,8 +172,8 @@ def send_weekly_reports_to_all_users() -> dict:
         failed_count = 0
 
         for user in users:
-            result = generate_weekly_report.delay(str(user.id))
-            if result:
+            report = generate_weekly_report(str(user.id))
+            if report.get("sent"):
                 sent_count += 1
             else:
                 failed_count += 1

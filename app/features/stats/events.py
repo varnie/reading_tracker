@@ -25,6 +25,7 @@ class StatsEvents:
         user_id = event.data.get("user_id")
         if user_id:
             await cache.delete(f"user_stats:{user_id}")
+            await cache.invalidate_pattern("leaderboard:*")
 
     @staticmethod
     async def on_book_added(event: Event) -> None:
@@ -94,7 +95,7 @@ def register_stats_handlers() -> None:
     event_bus.subscribe("books.session_created", StatsEvents.on_session_created)
     event_bus.subscribe("books.book_deleted", StatsEvents.on_book_deleted)
     event_bus.subscribe(
-        "catalog.book_added_to_catalog", StatsEvents.on_catalog_book_added
+        "catalog.book_added", StatsEvents.on_catalog_book_added
     )
     event_bus.subscribe("auth.user_registered", StatsEvents.on_user_registered)
     event_bus.subscribe("auth.user_logged_in", StatsEvents.on_user_logged_in)
