@@ -33,6 +33,9 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/0",
         validation_alias="REDIS_URL",
     )
+    redis_max_connections: int = Field(
+        default=20, validation_alias="REDIS_MAX_CONNECTIONS"
+    )
 
     # JWT
     jwt_secret_key: str = Field(
