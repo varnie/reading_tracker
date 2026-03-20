@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -59,19 +60,21 @@ class EventBus:
                 pass
 
     async def publish(self, event: Event) -> None:
-        """Publish an event to all subscribers."""
+        """Publish an event to all subscribers concurrently."""
         self._logger.debug(f"Publishing event '{event.name}': {event.data}")
 
         if event.name not in self._handlers:
             self._logger.debug(f"No handlers subscribed to '{event.name}'")
             return
 
-        for handler in self._handlers[event.name]:
-            try:
-                await handler(event)
-            except Exception as e:
+        tasks = [handler(event) for handler in self._handlers[event.name]]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                handler_name = self._handlers[event.name][i].__name__
                 self._logger.error(
-                    f"Error in handler {handler.__name__} for event '{event.name}': {e}"
+                    f"Error in handler {handler_name} for event '{event.name}': {result}"
                 )
 
     def get_subscribers(self, event_name: str) -> list[EventHandler]:
