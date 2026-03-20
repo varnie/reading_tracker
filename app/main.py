@@ -5,11 +5,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.router import api_router
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logging import setup_logging
 from app.core.redis import close_redis
 from app.db.session import close_db, init_db
+from app.features.stats.events import register_stats_handlers
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.shared.schemas import HealthResponse
 
 
@@ -18,13 +21,8 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     setup_logging()
     await init_db()
-
-    from app.features.stats.events import register_stats_handlers
-
     register_stats_handlers()
-
     yield
-
     await close_db()
     await close_redis()
 
@@ -49,9 +47,6 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["*"],
     )
-
-    from app.middleware.rate_limit import RateLimitMiddleware
-
     app.add_middleware(RateLimitMiddleware)
 
     @app.exception_handler(AppException)
@@ -69,8 +64,6 @@ def create_app() -> FastAPI:
             version="0.1.0",
             timestamp=datetime.now(UTC),
         )
-
-    from app.api.router import api_router
 
     app.include_router(api_router, prefix=f"/api/{settings.app_version}")
 
