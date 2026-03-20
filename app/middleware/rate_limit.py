@@ -5,11 +5,14 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
-from app.core.redis import get_redis
+from app.core.redis import get_redis_client
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware using Redis."""
+
+    _excluded = frozenset({"/health", "/docs", "/openapi.json", "/redoc"})
+    _auth_register_path = f"/api/{settings.app_version}/auth/register"
 
     async def dispatch(
         self,
@@ -22,35 +25,34 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if self._is_excluded(path):
             return await call_next(request)
 
-        if path.startswith("/api/"):
-            limit = settings.rate_limit_per_minute
-        elif path.startswith("/auth/"):
+        if path.startswith("/auth/"):
             limit = settings.rate_limit_auth_per_minute
         else:
             limit = settings.rate_limit_per_minute
 
         key = f"rate_limit:{client_ip}:{path}"
 
-        redis = await get_redis()
+        redis = get_redis_client()
 
-        current = await redis.get(key)
+        current_count = await redis.incr(key)
+        current_ttl = await redis.ttl(key)
+        if current_count == 1 or current_ttl == -1:
+            await redis.expire(key, 60)
 
-        if current is None:
-            await redis.setex(key, 60, "1")
-        else:
-            current_int = int(current)
-            if current_int >= limit:
-                ttl = await redis.ttl(key)
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Rate limit exceeded"},
-                    headers={"Retry-After": str(ttl) if ttl > 0 else "60"},
-                )
-            await redis.incr(key)
+        if current_count > limit:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded"},
+                headers={
+                    "Retry-After": str(current_ttl) if current_ttl > 0 else "60",
+                    "X-RateLimit-Limit": str(limit),
+                    "X-RateLimit-Remaining": "0",
+                },
+            )
 
         response = await call_next(request)
 
-        remaining = limit - int(await redis.get(key) or "0") - 1
+        remaining = limit - current_count
         response.headers["X-RateLimit-Limit"] = str(limit)
         response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
 
@@ -73,5 +75,4 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def _is_excluded(self, path: str) -> bool:
         """Check if path is excluded from rate limiting."""
-        excluded = ["/health", "/docs", "/openapi.json", "/redoc"]
-        return path in excluded or path.startswith("/api/v1/auth/register")
+        return path in self._excluded or path == self._auth_register_path
