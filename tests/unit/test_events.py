@@ -110,18 +110,18 @@ class TestEventBus:
 
 
 class TestStatsAuthEventHandlers:
-    """Tests for auth event handlers in StatsEvents."""
+    """Tests for auth event handlers in StatsHandlers."""
 
     def test_on_user_registered_is_callable(self):
         """on_user_registered handler should exist and be callable."""
-        from app.features.stats.events import StatsEvents
+        from app.features.stats.events import StatsHandlers
 
-        assert hasattr(StatsEvents, "on_user_registered")
-        assert callable(StatsEvents.on_user_registered)
+        assert hasattr(StatsHandlers, "on_user_registered")
+        assert callable(StatsHandlers.on_user_registered)
 
     def test_on_user_logged_in_is_callable(self):
         """on_user_logged_in handler should exist and be callable."""
-        from app.features.stats.events import StatsEvents
+        from app.features.stats.events import StatsHandlers
 
-        assert hasattr(StatsEvents, "on_user_logged_in")
-        assert callable(StatsEvents.on_user_logged_in)
+        assert hasattr(StatsHandlers, "on_user_logged_in")
+        assert callable(StatsHandlers.on_user_logged_in)

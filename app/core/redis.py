@@ -91,28 +91,32 @@ class Cache:
         self._redis = redis_client or get_redis_client()
         self._prefix = "cache:"
 
+    def _get_full_key(self, key: str) -> str:
+        return f"{self._prefix}{key}"
+
     async def get(self, key: str) -> Any | None:
         """Get a value from cache."""
-        value = await self._redis.get(f"{self._prefix}{key}")
-        if value:
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                return value
-        return None
+        raw_value = await self._redis.get(self._get_full_key(key))
+        if raw_value is None:
+            return None
+        try:
+            return json.loads(raw_value)
+        except (json.JSONDecodeError, TypeError):
+            return raw_value
 
     async def set(self, key: str, value: Any, ttl: int = 3600) -> None:
         """Set a value in cache with TTL in seconds."""
-        await self._redis.setex(f"{self._prefix}{key}", ttl, json.dumps(value))
+        data = json.dumps(value) if not isinstance(value, (str, int, float)) else value
+        await self._redis.setex(self._get_full_key(key), ttl, data)
 
     async def delete(self, key: str) -> None:
         """Delete a key from cache."""
-        await self._redis.delete(f"{self._prefix}{key}")
+        await self._redis.delete(self._get_full_key(key))
 
     async def invalidate_pattern(self, pattern: str) -> int:
         """Invalidate all keys matching pattern."""
-        full_pattern = f"{self._prefix}{pattern}"
-        keys = [k async for k in self._redis.scan_iter(match=full_pattern)]
+        full_pattern = self._get_full_key(pattern)
+        keys = [k async for k in self._redis.scan_iter(match=full_pattern, count=1000)]
         if keys:
             return await self._redis.delete(*keys)
         return 0
