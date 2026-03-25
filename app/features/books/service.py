@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import BookStatus
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.features.books.events import BookEvents
 from app.features.books.repository import BookRepository
 from app.features.books.schemas import BookCreate, BookResponse, BookUpdate
@@ -81,12 +81,27 @@ class BookService:
         if not user_book:
             raise NotFoundError("Book")
 
+        catalog_book = await self._catalog_repo.get_by_id(user_book.book_id)
+        if not catalog_book:
+            raise NotFoundError("Book")
+
         update_data = data.model_dump(exclude_unset=True)
+
+        if "pages_read" in update_data:
+            new_pages_read = update_data["pages_read"]
+            if new_pages_read > catalog_book.pages_total:
+                raise ValidationError(
+                    f"Pages read ({new_pages_read}) cannot exceed book total ({catalog_book.pages_total})"
+                )
 
         if data.status == BookStatus.READING and not user_book.started_at:
             update_data["started_at"] = datetime.now(UTC)
 
         if data.status == BookStatus.FINISHED:
+            if data.rating is None:
+                raise ValidationError(
+                    "Rating is required when marking a book as finished"
+                )
             update_data["finished_at"] = datetime.now(UTC)
             update_data["rating"] = data.rating
             await event_bus.publish(

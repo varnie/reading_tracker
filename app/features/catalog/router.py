@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,3 +83,17 @@ async def create_catalog_book(
     )
 
     return book
+
+
+@router.get(
+    "/{book_id}",
+    response_model=CatalogBookResponse,
+    summary="Get catalog book",
+)
+async def get_catalog_book(
+    book_id: UUID,
+    session: AsyncSession = Depends(get_db),
+) -> CatalogBookResponse:
+    """Get a specific book from the catalog."""
+    service = CatalogService(session)
+    return await service.get_book(book_id)

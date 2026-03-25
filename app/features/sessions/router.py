@@ -7,6 +7,7 @@ from app.features.sessions.schemas import (
     SessionCreate,
     SessionListResponse,
     SessionResponse,
+    SessionUpdate,
 )
 from app.features.sessions.service import SessionService
 from app.models.user import User
@@ -59,3 +60,36 @@ async def create_session(
     """Create a new reading session for a book."""
     service = SessionService(session)
     return await service.create_session(user.id, book_id, data)
+
+
+@router.patch(
+    "/books/{book_id}/sessions/{session_id}",
+    response_model=SessionResponse,
+    summary="Update reading session",
+)
+async def update_session(
+    book_id: UUID,
+    session_id: UUID,
+    data: SessionUpdate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> SessionResponse:
+    """Update a reading session."""
+    service = SessionService(session)
+    return await service.update_session(user.id, book_id, session_id, data)
+
+
+@router.delete(
+    "/books/{book_id}/sessions/{session_id}",
+    status_code=204,
+    summary="Delete reading session",
+)
+async def delete_session(
+    book_id: UUID,
+    session_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete a reading session."""
+    service = SessionService(session)
+    await service.delete_session(user.id, book_id, session_id)

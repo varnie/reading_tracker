@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.reading_session import ReadingSession
@@ -49,7 +49,7 @@ class SessionRepository:
             .order_by(ReadingSession.started_at.desc())
         )
 
-        count_query = select(ReadingSession.id).where(
+        count_query = select(func.count(ReadingSession.id)).where(
             ReadingSession.user_book_id == user_book_id
         )
 
@@ -59,7 +59,7 @@ class SessionRepository:
         count_result = await self._session.execute(count_query)
 
         items = list(result.scalars().all())
-        total = len(list(count_result.scalars().all()))
+        total = count_result.scalar() or 0
 
         return items, total
 
@@ -78,3 +78,10 @@ class SessionRepository:
         )
         await self._session.flush()
         return await self.get_by_id(session_id)
+
+    async def delete(self, session_id: UUID) -> bool:
+        """Delete a session."""
+        result = await self._session.execute(
+            delete(ReadingSession).where(ReadingSession.id == session_id)
+        )
+        return result.rowcount > 0

@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -60,6 +62,67 @@ class TestCatalogEndpoints:
         """Should search catalog."""
         response = await client.get(f"{api_prefix}/catalog?query=test")
         assert response.status_code == 200
+
+    async def test_get_catalog_book(self, client: AsyncClient, api_prefix: str):
+        """Should get a single catalog book."""
+        response = await client.post(
+            f"{api_prefix}/auth/register",
+            json={
+                "email": f"getbook-{uuid.uuid4()}@example.com",
+                "password": "TestPassword123!",
+            },
+        )
+        login_response = await client.post(
+            f"{api_prefix}/auth/login",
+            json={
+                "email": response.json()["email"],
+                "password": "TestPassword123!",
+            },
+        )
+        token = login_response.json()["access_token"]
+
+        create_response = await client.post(
+            f"{api_prefix}/catalog",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "title": "Get Single Book Test",
+                "author": "Test Author",
+                "pages_total": 150,
+            },
+        )
+        book_id = create_response.json()["id"]
+
+        response = await client.get(f"{api_prefix}/catalog/{book_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == book_id
+        assert data["title"] == "Get Single Book Test"
+
+    async def test_get_catalog_book_not_found(
+        self, client: AsyncClient, api_prefix: str
+    ):
+        """Should return 404 for non-existent book."""
+        fake_id = str(uuid.uuid4())
+        response = await client.get(f"{api_prefix}/catalog/{fake_id}")
+        assert response.status_code == 404
+
+    async def test_search_with_percent_character(
+        self, client: AsyncClient, api_prefix: str
+    ):
+        """Should handle search with percent character."""
+        response = await client.get(f"{api_prefix}/catalog?query=100%")
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+
+    async def test_search_with_underscore_character(
+        self, client: AsyncClient, api_prefix: str
+    ):
+        """Should handle search with underscore character."""
+        response = await client.get(f"{api_prefix}/catalog?query=jack_jones")
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
 
 
 class TestBooksEndpoints:

@@ -4,6 +4,42 @@ from uuid import uuid4
 
 import pytest
 
+from app.features.catalog.repository import _escape_like_query
+
+
+class TestEscapeLikeQuery:
+    """Tests for LIKE query escaping."""
+
+    def test_escape_percent_sign(self):
+        """Should escape percent signs."""
+        result = _escape_like_query("test%value")
+        assert result == "test\\%value"
+
+    def test_escape_underscore(self):
+        """Should escape underscores."""
+        result = _escape_like_query("test_value")
+        assert result == "test\\_value"
+
+    def test_escape_backslash(self):
+        """Should escape backslashes."""
+        result = _escape_like_query("test\\value")
+        assert result == "test\\\\value"
+
+    def test_escape_multiple_special_chars(self):
+        """Should escape multiple special characters."""
+        result = _escape_like_query("50%_off\\today")
+        assert result == "50\\%\\_off\\\\today"
+
+    def test_escape_no_special_chars(self):
+        """Should return unchanged if no special chars."""
+        result = _escape_like_query("normal search query")
+        assert result == "normal search query"
+
+    def test_escape_empty_string(self):
+        """Should handle empty string."""
+        result = _escape_like_query("")
+        assert result == ""
+
 
 class TestCatalogService:
     """Tests for CatalogService."""

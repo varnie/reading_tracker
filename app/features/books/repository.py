@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user_book import UserBook
@@ -48,7 +48,7 @@ class BookRepository:
     ) -> tuple[list[UserBook], int]:
         """List user's books with optional status filter."""
         query = select(UserBook).where(UserBook.user_id == user_id)
-        count_query = select(UserBook.id).where(UserBook.user_id == user_id)
+        count_query = select(func.count(UserBook.id)).where(UserBook.user_id == user_id)
 
         if status:
             query = query.where(UserBook.status == status)
@@ -60,7 +60,7 @@ class BookRepository:
         count_result = await self._session.execute(count_query)
 
         items = list(result.scalars().all())
-        total = len(list(count_result.scalars().all()))
+        total = count_result.scalar() or 0
 
         return items, total
 

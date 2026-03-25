@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AlreadyExistsError
+from app.core.exceptions import AlreadyExistsError, NotFoundError
 from app.features.catalog.repository import CatalogRepository
 from app.features.catalog.schemas import CatalogBookCreate, CatalogBookResponse
 
@@ -94,3 +94,20 @@ class CatalogService:
             )
             for book in books
         ]
+
+    async def get_book(self, book_id: UUID) -> CatalogBookResponse:
+        """Get a single catalog book by ID."""
+        book = await self._repo.get_by_id(book_id)
+        if not book:
+            raise NotFoundError("Book")
+
+        return CatalogBookResponse(
+            id=book.id,
+            title=book.title,
+            author=book.author,
+            isbn=book.isbn,
+            description=book.description,
+            pages_total=book.pages_total,
+            created_at=book.created_at.isoformat(),
+            created_by_user_id=str(book.created_by_user_id),
+        )
