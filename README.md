@@ -147,14 +147,14 @@ uv run mypy app/
 | Background Tasks | Celery |
 | Auth | JWT (access + refresh rotation) + Argon2 |
 | Search | PostgreSQL full-text search |
-| Rate Limiting | Redis + middleware |
+| Rate Limiting | Redis + FastAPI dependency (Lua atomic) |
 | Python Tools | uv + ruff |
 
 ---
 
 ## Security Features
 
-- **Rate limiting** - Per-IP rate limiting with configurable limits
+- **Rate limiting** - Per-IP with Lua atomic operations, granular per-endpoint limits
 - **Account lockout** - Auto-lock after 5 failed login attempts (15 min)
 - **Proxy-aware** - Respects `X-Forwarded-For` with trusted proxy config
 - **JWT rotation** - Access + refresh token with automatic rotation
