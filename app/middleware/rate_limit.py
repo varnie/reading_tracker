@@ -1,9 +1,8 @@
-import ipaddress
 import logging
 import os
-import re
 import sys
 from collections.abc import Callable
+from ipaddress import ip_address
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -15,50 +14,66 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-IPV4_PATTERN = re.compile(r"^(\d{1,3}\.){3}\d{1,3}$")
-
-
-def _is_valid_ip(ip: str) -> bool:
-    """Validate IP address format."""
-    if not ip or len(ip) > 45:
-        return False
-    if IPV4_PATTERN.match(ip):
-        parts = ip.split(".")
-        return all(0 <= int(p) <= 255 for p in parts)
+def _parse_ip(ip: str) -> str | None:
+    """Parse and validate IP address, return None if invalid."""
     try:
-        ipaddress.ip_address(ip)
-        return True
+        str(ip_address(ip))
+        return ip
     except ValueError:
-        return False
+        return None
+
+
+def _get_client_ip(request: Request) -> str:
+    """
+    Extract client IP from request.
+
+    Priority:
+    1. X-Forwarded-For header (if request comes from trusted proxy)
+    2. X-Real-IP header (if request comes from trusted proxy)
+    3. Direct client IP (request.client)
+    """
+    direct_ip = request.client.host if request.client else None
+    forwarded = request.headers.get("X-Forwarded-For")
+    real_ip = request.headers.get("X-Real-IP")
+    trusted = settings.trusted_proxies_list
+
+    if trusted and direct_ip in trusted:
+        if forwarded:
+            for ip in reversed(forwarded.split(",")):
+                ip = ip.strip()
+                if _parse_ip(ip) and ip not in trusted:
+                    return ip
+            return direct_ip
+
+        if real_ip and _parse_ip(real_ip) and real_ip not in trusted:
+            return real_ip
+
+    if direct_ip and _parse_ip(direct_ip):
+        return direct_ip
+
+    if real_ip and _parse_ip(real_ip):
+        return real_ip
+
+    return direct_ip or "unknown"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware using Redis."""
 
-    _excluded = frozenset({"/health", "/docs", "/redoc"})
-    _auth_register_path = f"/api/{settings.app_version}/auth/register"
-    _auth_prefix = f"/api/{settings.app_version}/auth/"
-    _openapi_path = f"/api/{settings.app_version}/openapi.json"
+    EXCLUDED_PATHS = frozenset({"/health", "/docs", "/redoc"})
+    AUTH_PREFIX = f"/api/{settings.app_version}/auth/"
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable,
-    ) -> Response:
-        if (
-            "PYTEST_CURRENT_TEST" in os.environ
-            or "PYTEST_VERSION" in os.environ
-            or any(mod.startswith("pytest") for mod in sys.modules)
-        ):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if self._is_testing():
             return await call_next(request)
 
-        client_ip = self._get_client_ip(request)
+        client_ip = _get_client_ip(request)
         path = request.url.path
 
-        if self._is_excluded(path):
+        if path in self.EXCLUDED_PATHS:
             return await call_next(request)
 
-        if path.startswith(self._auth_prefix):
+        if path.startswith(self.AUTH_PREFIX) and path != f"{self.AUTH_PREFIX}register":
             limit = settings.rate_limit_auth_per_minute
         else:
             limit = settings.rate_limit_per_minute
@@ -66,130 +81,85 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         try:
             redis = redis_module.get_redis_client()
 
-            lockout_key = f"lockout:{client_ip}"
-            if await redis.exists(lockout_key):
-                ttl = await redis.ttl(lockout_key)
-                return JSONResponse(
-                    status_code=429,
-                    content={
-                        "detail": "Account temporarily locked due to too many failed attempts"
-                    },
-                    headers={
-                        "Retry-After": str(max(ttl, 1)),
-                        "X-RateLimit-Limit": str(limit),
-                        "X-RateLimit-Remaining": "0",
-                    },
-                )
+            if await redis.exists(f"lockout:{client_ip}"):
+                return self._lockout_response(limit)
 
             key = f"rate_limit:{client_ip}:{path}"
-            current_count = await redis.incr(key)
-            current_ttl = await redis.ttl(key)
-            if current_count == 1 or current_ttl == -1:
+            count = await redis.incr(key)
+            ttl = await redis.ttl(key)
+
+            if count == 1:
                 await redis.expire(key, 60)
 
-            if current_count > limit:
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Rate limit exceeded"},
-                    headers={
-                        "Retry-After": str(current_ttl) if current_ttl > 0 else "60",
-                        "X-RateLimit-Limit": str(limit),
-                        "X-RateLimit-Remaining": "0",
-                    },
-                )
+            if count > limit:
+                return self._rate_limit_response(limit, max(ttl, 1))
 
         except Exception:
-            logger.warning("Redis error during rate limiting, allowing request")
+            logger.warning("Rate limit check failed, allowing request")
             return await call_next(request)
 
         response = await call_next(request)
-
-        remaining = limit - current_count
         response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
-
+        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - count))
         return response
 
-    def _get_client_ip(self, request: Request) -> str:
-        """Extract client IP from request with proxy validation."""
-        direct_client = request.client.host if request.client else None
-
-        trusted_proxies = settings.trusted_proxies_list
-        forwarded = request.headers.get("X-Forwarded-For")
-        real_ip = request.headers.get("X-Real-IP")
-
-        if trusted_proxies and direct_client in trusted_proxies:
-            if forwarded:
-                ips = [ip.strip() for ip in forwarded.split(",")]
-                for ip in ips:
-                    if _is_valid_ip(ip) and ip not in trusted_proxies:
-                        return ip
-                return ips[-1] if ips else direct_client
-
-            if real_ip and _is_valid_ip(real_ip) and real_ip not in trusted_proxies:
-                return real_ip
-
-        if direct_client and _is_valid_ip(direct_client):
-            return direct_client
-
-        if real_ip and _is_valid_ip(real_ip):
-            return real_ip
-
-        return direct_client or "unknown"
-
-    def _is_excluded(self, path: str) -> bool:
-        """Check if path is excluded from rate limiting."""
+    def _is_testing(self) -> bool:
         return (
-            path in self._excluded
-            or path == self._auth_register_path
-            or path == self._openapi_path
+            "PYTEST_CURRENT_TEST" in os.environ
+            or "PYTEST_VERSION" in os.environ
+            or any(m.startswith("pytest") for m in sys.modules)
+        )
+
+    def _rate_limit_response(self, limit: int, ttl: int) -> Response:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded"},
+            headers={
+                "Retry-After": str(ttl),
+                "X-RateLimit-Limit": str(limit),
+                "X-RateLimit-Remaining": "0",
+            },
+        )
+
+    def _lockout_response(self, limit: int) -> Response:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Account temporarily locked"},
+            headers={
+                "Retry-After": "900",
+                "X-RateLimit-Limit": str(limit),
+                "X-RateLimit-Remaining": "0",
+            },
         )
 
 
-async def check_failed_login(client_ip: str, redis_client) -> tuple[bool, int]:
-    """
-    Check if client is locked out and track failed attempts.
-
-    Returns:
-        Tuple of (is_locked, attempts)
-    """
-    lockout_key = f"lockout:{client_ip}"
-    if await redis_client.exists(lockout_key):
+async def check_failed_login(client_ip: str, redis) -> tuple[bool, int]:
+    """Check if client IP is locked out."""
+    if await redis.exists(f"lockout:{client_ip}"):
         return True, settings.rate_limit_max_failed_attempts
-
-    attempts_key = f"failed_login:{client_ip}"
-    attempts = await redis_client.get(attempts_key)
+    attempts = await redis.get(f"failed_login:{client_ip}")
     return False, int(attempts) if attempts else 0
 
 
-async def record_failed_login(client_ip: str, redis_client) -> bool:
-    """
-    Record a failed login attempt and lock out if threshold reached.
-
-    Returns:
-        True if account is now locked
-    """
+async def record_failed_login(client_ip: str, redis) -> bool:
+    """Record failed login and lock out if threshold reached."""
     attempts_key = f"failed_login:{client_ip}"
     lockout_key = f"lockout:{client_ip}"
 
-    attempts = await redis_client.get(attempts_key)
-    current_attempts = int(attempts) if attempts else 0
-    new_attempts = current_attempts + 1
+    attempts = int(await redis.get(attempts_key) or 0) + 1
 
-    if new_attempts >= settings.rate_limit_max_failed_attempts:
-        lockout_seconds = settings.rate_limit_lockout_duration_minutes * 60
-        await redis_client.setex(lockout_key, lockout_seconds, "1")
-        await redis_client.delete(attempts_key)
-        logger.warning(
-            f"Account locked out for {client_ip} after {new_attempts} failed attempts"
+    if attempts >= settings.rate_limit_max_failed_attempts:
+        await redis.setex(
+            lockout_key, settings.rate_limit_lockout_duration_minutes * 60, "1"
         )
+        await redis.delete(attempts_key)
+        logger.warning(f"Locked out {client_ip} after {attempts} failed attempts")
         return True
 
-    await redis_client.setex(attempts_key, 3600, str(new_attempts))
+    await redis.setex(attempts_key, 3600, str(attempts))
     return False
 
 
-async def clear_failed_logins(client_ip: str, redis_client) -> None:
-    """Clear failed login attempts after successful login."""
-    attempts_key = f"failed_login:{client_ip}"
-    await redis_client.delete(attempts_key)
+async def clear_failed_logins(client_ip: str, redis) -> None:
+    """Clear failed login tracking after successful login."""
+    await redis.delete(f"failed_login:{client_ip}")
