@@ -81,7 +81,7 @@ class TokenBlacklist:
             return await self._redis.exists(f"{self._prefix}{jti}") > 0
         except redis.RedisError as e:
             logger.error(f"Redis error during blacklist check: {e}")
-            return False
+            return True  # Fail closed - deny access on Redis errors
 
 
 class Cache:

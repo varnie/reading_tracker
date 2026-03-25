@@ -37,14 +37,8 @@ class TokenResponse(BaseModel):
     token_jti: str
 
 
-class RefreshTokenResponse(BaseModel):
-    """Schema for refresh token response."""
-
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    token_jti: str
+# RefreshTokenResponse is the same as TokenResponse
+RefreshTokenResponse = TokenResponse
 
 
 class LogoutResponse(BaseModel):
