@@ -71,6 +71,17 @@ docker compose -f docker-compose.prod.yml down -v
 
 > **Required:** `--env-file .env.prod` provides secrets (JWT_SECRET_KEY, passwords).
 
+### Environment Variables
+
+| Variable | Default | Description |
+|---------|---------|-------------|
+| `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL connection string |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
+| `JWT_SECRET_KEY` | `change-me...` | JWT signing key (change in prod!) |
+| `TRUSTED_PROXIES` | empty | Comma-separated trusted proxy IPs |
+| `RATE_LIMIT_MAX_FAILED_ATTEMPTS` | 5 | Failed attempts before lockout |
+| `RATE_LIMIT_LOCKOUT_DURATION_MINUTES` | 15 | Lockout duration in minutes |
+
 ---
 
 ## 4. Development Tools
@@ -135,7 +146,19 @@ uv run mypy app/
 | Cache/Broker | Redis |
 | Background Tasks | Celery |
 | Auth | JWT (access + refresh rotation) + Argon2 |
+| Search | PostgreSQL full-text search |
+| Rate Limiting | Redis + middleware |
 | Python Tools | uv + ruff |
+
+---
+
+## Security Features
+
+- **Rate limiting** - Per-IP rate limiting with configurable limits
+- **Account lockout** - Auto-lock after 5 failed login attempts (15 min)
+- **Proxy-aware** - Respects `X-Forwarded-For` with trusted proxy config
+- **JWT rotation** - Access + refresh token with automatic rotation
+- **Token blacklist** - Instant logout revocation
 
 ---
 
@@ -152,10 +175,17 @@ Once running, access:
 | POST | `/api/v1/auth/register` | Register new user |
 | POST | `/api/v1/auth/login` | Login and get tokens |
 | POST | `/api/v1/auth/refresh` | Refresh access token |
+| POST | `/api/v1/auth/logout` | Logout and revoke tokens |
 | GET | `/api/v1/books` | List user's books |
 | POST | `/api/v1/books` | Add book from catalog |
+| PATCH | `/api/v1/books/{id}` | Update book status/progress |
+| DELETE | `/api/v1/books/{id}` | Remove book from library |
 | POST | `/api/v1/books/{id}/sessions` | Start reading session |
+| PATCH | `/api/v1/books/{id}/sessions/{sid}` | Update session |
+| DELETE | `/api/v1/books/{id}/sessions/{sid}` | Delete session |
 | GET | `/api/v1/catalog` | Search catalog |
+| GET | `/api/v1/catalog/{id}` | Get catalog book |
+| GET | `/api/v1/catalog/popular` | Popular books |
 | GET | `/api/v1/stats` | User statistics |
 | GET | `/api/v1/stats/top-users` | Top readers leaderboard |
 
