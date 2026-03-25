@@ -77,6 +77,8 @@ async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
 
     from app.main import app
 
+    app.state.testing = True
+
     async def mock_get_db():
         async with test_session_maker() as session:
             try:
@@ -105,6 +107,7 @@ async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
         yield ac
 
     app.dependency_overrides.clear()
+    app.state.testing = False
     redis_patch.stop()
     uuid_patch.stop()
     models_uuid_patch.stop()

@@ -1,136 +1,108 @@
+"""
+Rate limiting using Redis with Lua scripting for atomic operations.
+
+Use as a FastAPI dependency:
+    from app.middleware.rate_limit import RateLimiter
+
+    @router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+    async def login(): ...
+"""
+
 import logging
-import os
-import sys
-from collections.abc import Callable
 from ipaddress import ip_address
 
-from fastapi import Request, Response
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import HTTPException, Request, status
 
 from app.core import redis as redis_module
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-
-def _parse_ip(ip: str) -> str | None:
-    """Parse and validate IP address, return None if invalid."""
-    try:
-        str(ip_address(ip))
-        return ip
-    except ValueError:
-        return None
+RATE_LIMIT_LUA = """
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return current
+"""
 
 
 def _get_client_ip(request: Request) -> str:
-    """
-    Extract client IP from request.
-
-    Priority:
-    1. X-Forwarded-For header (if request comes from trusted proxy)
-    2. X-Real-IP header (if request comes from trusted proxy)
-    3. Direct client IP (request.client)
-    """
+    """Extract client IP, respecting trusted proxies."""
     direct_ip = request.client.host if request.client else None
-    forwarded = request.headers.get("X-Forwarded-For")
-    real_ip = request.headers.get("X-Real-IP")
-    trusted = settings.trusted_proxies_list
 
-    if trusted and direct_ip in trusted:
+    if settings.trusted_proxies_list and direct_ip in settings.trusted_proxies_list:
+        forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             for ip in reversed(forwarded.split(",")):
                 ip = ip.strip()
-                if _parse_ip(ip) and ip not in trusted:
-                    return ip
+                try:
+                    ip_address(ip)
+                    if ip not in settings.trusted_proxies_list:
+                        return ip
+                except ValueError:
+                    continue
+            return direct_ip or "unknown"
+
+    if direct_ip:
+        try:
+            ip_address(direct_ip)
             return direct_ip
-
-        if real_ip and _parse_ip(real_ip) and real_ip not in trusted:
-            return real_ip
-
-    if direct_ip and _parse_ip(direct_ip):
-        return direct_ip
-
-    if real_ip and _parse_ip(real_ip):
-        return real_ip
+        except ValueError:
+            pass
 
     return direct_ip or "unknown"
 
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Rate limiting middleware using Redis."""
+class RateLimiter:
+    """
+    FastAPI dependency for rate limiting.
 
-    EXCLUDED_PATHS = frozenset({"/health", "/docs", "/redoc"})
-    AUTH_PREFIX = f"/api/{settings.app_version}/auth/"
+    Usage:
+        @router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+        async def login(): ...
+    """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        if self._is_testing():
-            return await call_next(request)
+    def __init__(self, times: int, seconds: int):
+        self.times = times
+        self.seconds = seconds
+
+    async def __call__(self, request: Request) -> None:
+        if getattr(request.app.state, "testing", False):
+            return
 
         client_ip = _get_client_ip(request)
-        path = request.url.path
+        key = f"rate:{client_ip}:{request.url.path}"
 
-        if path in self.EXCLUDED_PATHS:
-            return await call_next(request)
+        redis = redis_module.get_redis_client()
+        count = await redis.eval(RATE_LIMIT_LUA, 1, key, self.seconds)
 
-        if path.startswith(self.AUTH_PREFIX) and path != f"{self.AUTH_PREFIX}register":
-            limit = settings.rate_limit_auth_per_minute
-        else:
-            limit = settings.rate_limit_per_minute
-
-        try:
-            redis = redis_module.get_redis_client()
-
-            if await redis.exists(f"lockout:{client_ip}"):
-                return self._lockout_response(limit)
-
-            key = f"rate_limit:{client_ip}:{path}"
-            count = await redis.incr(key)
+        if count > self.times:
             ttl = await redis.ttl(key)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests",
+                headers={
+                    "Retry-After": str(max(ttl, 1)),
+                    "X-RateLimit-Limit": str(self.times),
+                    "X-RateLimit-Remaining": "0",
+                },
+            )
 
-            if count == 1:
-                await redis.expire(key, 60)
 
-            if count > limit:
-                return self._rate_limit_response(limit, max(ttl, 1))
+def get_rate_limiter(times: int, seconds: int) -> RateLimiter:
+    """Factory for creating RateLimiter instances."""
+    return RateLimiter(times=times, seconds=seconds)
 
-        except Exception:
-            logger.warning("Rate limit check failed, allowing request")
-            return await call_next(request)
 
-        response = await call_next(request)
-        response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, limit - count))
-        return response
+def default_limiter() -> RateLimiter:
+    """Default rate limiter (60 requests per minute)."""
+    return RateLimiter(times=settings.rate_limit_per_minute, seconds=60)
 
-    def _is_testing(self) -> bool:
-        return (
-            "PYTEST_CURRENT_TEST" in os.environ
-            or "PYTEST_VERSION" in os.environ
-            or any(m.startswith("pytest") for m in sys.modules)
-        )
 
-    def _rate_limit_response(self, limit: int, ttl: int) -> Response:
-        return JSONResponse(
-            status_code=429,
-            content={"detail": "Rate limit exceeded"},
-            headers={
-                "Retry-After": str(ttl),
-                "X-RateLimit-Limit": str(limit),
-                "X-RateLimit-Remaining": "0",
-            },
-        )
-
-    def _lockout_response(self, limit: int) -> Response:
-        return JSONResponse(
-            status_code=429,
-            content={"detail": "Account temporarily locked"},
-            headers={
-                "Retry-After": "900",
-                "X-RateLimit-Limit": str(limit),
-                "X-RateLimit-Remaining": "0",
-            },
-        )
+def auth_limiter() -> RateLimiter:
+    """Auth rate limiter (10 requests per minute)."""
+    return RateLimiter(times=settings.rate_limit_auth_per_minute, seconds=60)
 
 
 async def check_failed_login(client_ip: str, redis) -> tuple[bool, int]:

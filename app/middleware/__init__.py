@@ -1,3 +1,3 @@
-from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.rate_limit import RateLimiter
 
-__all__ = ["RateLimitMiddleware"]
+__all__ = ["RateLimiter"]

@@ -16,6 +16,7 @@ from app.features.auth.schemas import (
     UserResponse,
 )
 from app.features.auth.service import AuthService
+from app.middleware.rate_limit import auth_limiter
 from app.shared.dependencies import get_db
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     response_model=UserResponse,
     status_code=201,
     summary="Register a new user",
+    dependencies=[Depends(auth_limiter)],
 )
 async def register(
     data: UserCreate,
@@ -42,6 +44,7 @@ async def register(
     "/login",
     response_model=TokenResponse,
     summary="Login user",
+    dependencies=[Depends(auth_limiter)],
 )
 async def login(
     data: UserLogin,

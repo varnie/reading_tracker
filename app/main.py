@@ -12,7 +12,6 @@ from app.core.logging import setup_logging
 from app.core.redis import close_redis
 from app.db.session import close_db, init_db
 from app.features.stats.events import register_stats_handlers
-from app.middleware.rate_limit import RateLimitMiddleware
 from app.shared.schemas import HealthResponse
 
 
@@ -47,7 +46,6 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["*"],
     )
-    app.add_middleware(RateLimitMiddleware)
 
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException):
