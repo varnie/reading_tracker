@@ -64,6 +64,20 @@ class Settings(BaseSettings):
     rate_limit_auth_per_minute: int = Field(
         default=10, validation_alias="RATE_LIMIT_AUTH_PER_MINUTE"
     )
+    rate_limit_max_failed_attempts: int = Field(
+        default=5, validation_alias="RATE_LIMIT_MAX_FAILED_ATTEMPTS"
+    )
+    rate_limit_lockout_duration_minutes: int = Field(
+        default=15, validation_alias="RATE_LIMIT_LOCKOUT_DURATION_MINUTES"
+    )
+    trusted_proxies: str = Field(default="", validation_alias="TRUSTED_PROXIES")
+
+    @property
+    def trusted_proxies_list(self) -> list[str]:
+        """Get list of trusted proxy IPs."""
+        if not self.trusted_proxies:
+            return []
+        return [ip.strip() for ip in self.trusted_proxies.split(",") if ip.strip()]
 
     # CORS
     cors_origins: str = Field(

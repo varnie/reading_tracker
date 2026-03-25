@@ -87,9 +87,9 @@ def check_abandoned_books(days_inactive: int = 30) -> dict:
 
 
 @celery_app.task
-def generate_weekly_report(user_id: str) -> dict:
+def get_weekly_report_stats(user_id: str) -> dict:
     """
-    Generate weekly reading report for a user.
+    Get weekly reading report statistics for a user (without sending email).
 
     Args:
         user_id: User ID to generate report for
@@ -97,7 +97,7 @@ def generate_weekly_report(user_id: str) -> dict:
     Returns:
         Report data with reading statistics.
     """
-    logger.info(f"Generating weekly report for user {user_id}")
+    logger.info(f"Getting weekly report stats for user {user_id}")
 
     with get_sync_session() as session:
         week_ago = datetime.now(UTC) - timedelta(days=7)
@@ -142,7 +142,7 @@ def generate_weekly_report(user_id: str) -> dict:
             "period_end": datetime.now(UTC).isoformat(),
         }
 
-        logger.info(f"Generated report for user {user_id}: {report}")
+        logger.info(f"Generated report stats for user {user_id}: {report}")
         return report
 
 

@@ -7,7 +7,7 @@ import pytest
 from app.tasks.book_tasks import (
     check_abandoned_books,
     cleanup_old_sessions,
-    generate_weekly_report,
+    get_weekly_report_stats,
 )
 
 
@@ -134,10 +134,10 @@ class TestCheckAbandonedBooks:
             assert result["abandoned"] == 0
 
 
-class TestGenerateWeeklyReport:
-    """Tests for generate_weekly_report task."""
+class TestGetWeeklyReportStats:
+    """Tests for get_weekly_report_stats task."""
 
-    def test_generate_weekly_report(self):
+    def test_get_weekly_report_stats(self):
         """Task should generate report for user."""
         mock_session = MagicMock()
 
@@ -162,7 +162,7 @@ class TestGenerateWeeklyReport:
             "app.tasks.book_tasks.get_sync_session",
             return_value=mock_session_cm(mock_session),
         ):
-            result = generate_weekly_report("user-id")
+            result = get_weekly_report_stats("user-id")
 
             assert isinstance(result, dict)
             assert result["user_id"] == "user-id"
@@ -171,7 +171,7 @@ class TestGenerateWeeklyReport:
             assert "books_finished" in result
             assert "pages_read" in result
 
-    def test_generate_weekly_report_user_not_found(self):
+    def test_get_weekly_report_stats_user_not_found(self):
         """Task should handle user not found."""
         mock_session = MagicMock()
         mock_session.get.return_value = None
@@ -180,7 +180,7 @@ class TestGenerateWeeklyReport:
             "app.tasks.book_tasks.get_sync_session",
             return_value=mock_session_cm(mock_session),
         ):
-            result = generate_weekly_report("nonexistent-user")
+            result = get_weekly_report_stats("nonexistent-user")
 
             assert result["books_started"] == 0
             assert result["books_finished"] == 0

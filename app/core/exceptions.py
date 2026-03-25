@@ -116,3 +116,13 @@ class ConflictError(AppException):
             status_code=status.HTTP_409_CONFLICT,
             detail=detail,
         )
+
+
+class RateLimitError(AppException):
+    """Account rate limit / lockout."""
+
+    def __init__(self, detail: str = "Too many requests") -> None:
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=detail,
+        )
