@@ -1,6 +1,5 @@
-import asyncio
-from collections.abc import AsyncGenerator, Generator
-from typing import Any
+import uuid
+from collections.abc import AsyncGenerator
 from unittest.mock import patch
 from uuid import UUID
 
@@ -12,14 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 FIXED_UUID = UUID("12345678-1234-5678-1234-567812345678")
-
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop]:
-    """Create event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -60,12 +51,7 @@ async def test_session_maker(test_engine):
 @pytest_asyncio.fixture(scope="function")
 async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
     """Create a test client with fake Redis and SQLite."""
-    from app.core.redis import (
-        Cache,
-        TokenBlacklist,
-        get_blacklist,
-        get_cache,
-    )
+    from app.core.redis import Cache, TokenBlacklist, get_blacklist, get_cache
 
     uuid_patch = patch("uuid.uuid4", return_value=FIXED_UUID)
     models_uuid_patch = patch("app.models.base.uuid.uuid4", return_value=FIXED_UUID)
@@ -88,19 +74,13 @@ async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
                 await session.rollback()
                 raise
 
-    def mock_get_cache_instance():
-        return Cache(fake_redis)
-
-    def mock_get_blacklist_instance():
-        return TokenBlacklist(fake_redis)
-
     app.dependency_overrides.clear()
 
     from app.shared.dependencies import get_db
 
     app.dependency_overrides[get_db] = mock_get_db
-    app.dependency_overrides[get_cache] = mock_get_cache_instance
-    app.dependency_overrides[get_blacklist] = mock_get_blacklist_instance
+    app.dependency_overrides[get_cache] = lambda: Cache(fake_redis)
+    app.dependency_overrides[get_blacklist] = lambda: TokenBlacklist(fake_redis)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -113,31 +93,25 @@ async def client(fake_redis, test_session_maker) -> AsyncGenerator[AsyncClient]:
     models_uuid_patch.stop()
 
 
+@pytest_asyncio.fixture(scope="function")
+async def auth_client(client, api_prefix) -> tuple[AsyncClient, str]:
+    """Client with valid auth token. Returns (client, token)."""
+    email = f"auth-{uuid.uuid4().hex[:8]}@test.com"
+    await client.post(
+        f"{api_prefix}/auth/register",
+        json={"email": email, "password": "TestPassword123!"},
+    )
+    resp = await client.post(
+        f"{api_prefix}/auth/login",
+        json={"email": email, "password": "TestPassword123!"},
+    )
+    token = resp.json()["access_token"]
+    return client, token
+
+
 @pytest.fixture
 def api_prefix() -> str:
     """Get API prefix from settings."""
     from app.core.config import settings
 
     return f"/api/{settings.app_version}"
-
-
-@pytest.fixture
-def mock_user() -> dict[str, Any]:
-    """Create a mock user."""
-    return {
-        "id": "12345678-1234-5678-1234-567812345678",
-        "email": "test@example.com",
-        "password": "TestPassword123!",
-    }
-
-
-@pytest.fixture
-def mock_book() -> dict[str, Any]:
-    """Create a mock book."""
-    return {
-        "title": "1984",
-        "author": "George Orwell",
-        "isbn": "978-0451524935",
-        "pages_total": 328,
-        "description": "Dystopian novel",
-    }
