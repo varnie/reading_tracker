@@ -34,7 +34,7 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.6.0",
     "coverage[toml]>=7.0.0",
-    "aiosqlite>=0.20.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [project.scripts]
